@@ -9,11 +9,12 @@ import {
   CheckCircle2,
   HeartHandshake,
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  Navigation
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useRequests } from '../context/RequestContext';
-import { MapViewer } from '../components/Map/MapViewer';
+import { GoogleMapsTracker } from '../components/Map/GoogleMapsTracker';
 import { NewRequestModal } from '../components/Modals/NewRequestModal';
 import { RequestDetailModal } from '../components/Modals/RequestDetailModal';
 import { ChatModal } from '../components/Chat/ChatModal';
@@ -29,11 +30,18 @@ export const DonorPortal = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isCancelOpen, setIsCancelOpen] = useState(false);
   const [filterTab, setFilterTab] = useState('ALL'); // 'ALL', 'ACTIVE', 'COMPLETED'
+  const [activeTrackedRequest, setActiveTrackedRequest] = useState(null);
+  const [mapMode, setMapMode] = useState('GOOGLE_MAPS_TRACKER'); // 'GOOGLE_MAPS_TRACKER', 'OVERVIEW'
 
   // Filter requests for current donor
   const myRequests = requests.filter(
     (r) => r.donorId === currentUser?.id || r.donorName === currentUser?.name
   );
+
+  const assignedRequest = myRequests.find((r) =>
+    ['ACCEPTED', 'IN_PROGRESS'].includes(r.status) || r.assignedVolunteerName || r.assignedVolunteer
+  );
+  const currentTracked = activeTrackedRequest || assignedRequest || myRequests[0];
 
   const activeRequests = myRequests.filter((r) =>
     ['PENDING', 'ACCEPTED', 'IN_PROGRESS'].includes(r.status)
@@ -245,17 +253,34 @@ export const DonorPortal = () => {
                         <Eye size={14} /> Details &amp; Audit
                       </button>
 
-                      {req.assignedVolunteerId && (
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => {
-                            setSelectedRequest(req);
-                            setActiveChatRequestId(req.id);
-                            setIsChatOpen(true);
-                          }}
-                        >
-                          <MessageSquare size={14} /> Chat
-                        </button>
+                      {(req.assignedVolunteerId || req.assignedVolunteerName || req.assignedVolunteer) && (
+                        <>
+                          <button
+                            className="btn btn-sm"
+                            style={{
+                              background: currentTracked?.id === req.id || currentTracked?._id === req._id ? '#0284c7' : 'var(--slate-100)',
+                              color: currentTracked?.id === req.id || currentTracked?._id === req._id ? 'white' : 'var(--slate-700)',
+                              fontWeight: 700
+                            }}
+                            onClick={() => {
+                              setActiveTrackedRequest(req);
+                              setMapMode('GOOGLE_MAPS_TRACKER');
+                            }}
+                          >
+                            <Navigation size={14} /> Track Volunteer
+                          </button>
+
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => {
+                              setSelectedRequest(req);
+                              setActiveChatRequestId(req.id || req._id);
+                              setIsChatOpen(true);
+                            }}
+                          >
+                            <MessageSquare size={14} /> Chat
+                          </button>
+                        </>
                       )}
 
                       {req.status === 'PENDING' && (
@@ -280,28 +305,29 @@ export const DonorPortal = () => {
         {/* Right Column: Live Dispatch Map & Food Rescue Tips */}
         <div>
           <div className="card" style={{ marginBottom: '20px' }}>
-            <div className="card-header" style={{ marginBottom: '12px' }}>
-              <div className="card-title" style={{ fontSize: '1rem' }}>
-                <MapPin size={18} style={{ color: 'var(--primary-600)' }} />
-                <span>Active Pickup Locations</span>
+            <div className="card-header" style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="card-title" style={{ fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Navigation size={18} style={{ color: '#0284c7' }} />
+                <span>Live Volunteer Tracking</span>
               </div>
-              <span style={{ fontSize: '0.74rem', color: 'var(--slate-500)' }}>
-                Live GPS Radar
+              <span
+                style={{
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  color: '#0284c7',
+                  background: '#e0f2fe',
+                  padding: '2px 8px',
+                  borderRadius: '12px'
+                }}
+              >
+                Google Maps Engine
               </span>
             </div>
 
-            <MapViewer
-              requests={myRequests}
-              height="320px"
-              showHotspots={false}
-              onSelectRequest={(r) => {
-                setSelectedRequest(r);
-                setIsDetailOpen(true);
-              }}
+            <GoogleMapsTracker
+              request={currentTracked}
+              height="360px"
             />
-            <div style={{ fontSize: '0.72rem', color: 'var(--slate-500)', marginTop: '8px', textAlign: 'center' }}>
-              Pins represent your surplus pickup spots in Chennai / region.
-            </div>
           </div>
 
           {/* Golden Hour Guidelines Card */}
