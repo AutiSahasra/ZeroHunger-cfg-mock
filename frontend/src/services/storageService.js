@@ -362,6 +362,22 @@ export function sendChatMessage(requestId, senderUser, text) {
 
   messages.push(newMessage);
   localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(messages));
+
+  // Sync to MongoDB database
+  try {
+    fetch('http://localhost:5000/api/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requestId,
+        senderId: senderUser.id,
+        senderName: senderUser.name,
+        senderRole: senderUser.role,
+        content: text
+      })
+    }).catch(err => console.warn('MongoDB sync note:', err.message));
+  } catch (e) {}
+
   return newMessage;
 }
 

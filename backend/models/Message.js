@@ -3,15 +3,23 @@ const mongoose = require("mongoose");
 const messageSchema = new mongoose.Schema(
   {
     request: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: "FoodRequest",
       required: true,
     },
 
     sender: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: "User",
       required: true,
+    },
+
+    senderName: {
+      type: String
+    },
+
+    senderRole: {
+      type: String
     },
 
     content: {

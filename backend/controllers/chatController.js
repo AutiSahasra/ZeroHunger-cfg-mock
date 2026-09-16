@@ -28,27 +28,27 @@ exports.getMessages = async (req, res) => {
 // @route   POST /api/messages
 exports.sendMessage = async (req, res) => {
   try {
-    const { requestId, content, senderId } = req.body;
-    const sender = senderId || req.user?._id;
+    const { requestId, content, senderId, senderName, senderRole } = req.body;
+    const sender = senderId || req.user?._id || 'vol-1';
 
-    if (!requestId || !content || !sender) {
+    if (!requestId || !content) {
       return res.status(400).json({
         success: false,
-        message: 'requestId, sender and content are required'
+        message: 'requestId and content are required'
       });
     }
 
     const message = await Message.create({
       request: requestId,
       sender,
+      senderName: senderName || req.user?.name || 'Volunteer',
+      senderRole: senderRole || req.user?.role || 'VOLUNTEER',
       content: content.trim()
     });
 
-    const populated = await Message.findById(message._id).populate('sender', 'name role');
-
     return res.status(201).json({
       success: true,
-      data: populated
+      data: message
     });
   } catch (error) {
     return res.status(500).json({
