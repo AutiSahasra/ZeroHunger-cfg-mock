@@ -143,14 +143,32 @@ export function createRequest(newReqData, donorUser) {
   return newRequest;
 }
 
-// Atomic Accept Request (TRD Section 7 & 11)
+// Atomic Accept Request (TRD Section 7 & 11) - Enforcing Single Order Concurrency
 export function acceptRequest(requestId, volunteerUser) {
   const requests = getRequests();
+
+  // Strict Rule: Only one order can be accepted at a time per volunteer.
+  // Once there is no order in progress, only then can the next order get assigned.
+  const activeOrder = requests.find(r =>
+    (r.assignedVolunteerId === volunteerUser?.id || r.assignedVolunteerId === volunteerUser?._id) &&
+    ['ACCEPTED', 'IN_PROGRESS'].includes(r.status)
+  );
+
+  if (activeOrder) {
+    throw new Error(
+      `Single Order Concurrency Rule: Only one order can be accepted at a time. You already have an active order in progress ("${activeOrder.title}"). Complete this delivery before accepting the next order.`
+    );
+  }
+
   const index = requests.findIndex(r => r.id === requestId);
   
   if (index === -1) throw new Error('Request not found');
   if (requests[index].status !== 'PENDING') {
     throw new Error('This request is no longer pending or has already been accepted.');
+  }
+
+  if (requests[index].assignedVolunteerId) {
+    throw new Error('This request has already been assigned to another volunteer.');
   }
 
   // Atomic state change
@@ -163,7 +181,7 @@ export function acceptRequest(requestId, volunteerUser) {
     status: 'ACCEPTED',
     timestamp: new Date().toISOString(),
     actor: `${volunteerUser.name} (Volunteer)`,
-    reason: 'Claimed request and started navigation to pickup location'
+    reason: 'Claimed request (Single active order accepted)'
   });
 
   localStorage.setItem(STORAGE_KEYS.REQUESTS, JSON.stringify(requests));

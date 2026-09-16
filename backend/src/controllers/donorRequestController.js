@@ -551,3 +551,103 @@ exports.getActiveMissionsTracking = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Accept a food request with SINGLE ORDER CONCURRENCY enforcement
+// @route   POST /api/requests/:id/accept
+// @access  Private
+exports.acceptRequest = async (req, res, next) => {
+  try {
+    const requestId = req.params.id;
+    const volunteerId = req.user._id;
+
+    // Strict Concurrency Check: Check if volunteer already has an order in progress
+    const activeOrder = await FoodRequest.findOne({
+      assignedVolunteer: volunteerId,
+      status: { $in: ['ACCEPTED', 'IN_PROGRESS'] }
+    });
+
+    if (activeOrder) {
+      return res.status(400).json({
+        success: false,
+        message: `Single Order Concurrency Rule: Volunteer already has an active order in progress ("${activeOrder.foodDetails?.foodType || 'Active Delivery'}"). Only one order can be accepted at a time. Once there is no order in progress, then only the next order gets assigned.`
+      });
+    }
+
+    const request = await FoodRequest.findById(requestId);
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Food request not found' });
+    }
+
+    if (request.status !== 'PENDING') {
+      return res.status(400).json({
+        success: false,
+        message: `Request cannot be accepted because it has status: ${request.status}`
+      });
+    }
+
+    if (request.assignedVolunteer) {
+      return res.status(400).json({
+        success: false,
+        message: 'This food request has already been claimed by another volunteer.'
+      });
+    }
+
+    request.status = 'ACCEPTED';
+    request.assignedVolunteer = volunteerId;
+    request.assignedVolunteerName = req.user.name;
+    request.assignedVolunteerPhone = req.user.phone;
+    request.assignedAt = new Date();
+    await request.save();
+
+    await RequestStatusHistory.create({
+      request: request._id,
+      oldStatus: 'PENDING',
+      newStatus: 'ACCEPTED',
+      actor: req.user._id,
+      reason: 'Claimed food rescue mission (Single active order accepted)'
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Request accepted successfully. Volunteer is now actively delivering this mission.',
+      data: request
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Complete delivery (frees up volunteer to accept next order)
+// @route   POST /api/requests/:id/complete
+// @access  Private
+exports.completeDelivery = async (req, res, next) => {
+  try {
+    const requestId = req.params.id;
+    const request = await FoodRequest.findById(requestId);
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Food request not found' });
+    }
+
+    const previousStatus = request.status;
+    request.status = 'DELIVERED';
+    request.deliveredAt = new Date();
+    await request.save();
+
+    await RequestStatusHistory.create({
+      request: request._id,
+      oldStatus: previousStatus,
+      newStatus: 'DELIVERED',
+      actor: req.user._id,
+      reason: 'Delivery completed and verified. Volunteer is now free to accept next mission.'
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Mission marked as DELIVERED. Volunteer can now accept next order.',
+      data: request
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

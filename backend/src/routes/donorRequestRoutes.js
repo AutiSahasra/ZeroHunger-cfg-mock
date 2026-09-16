@@ -7,12 +7,20 @@ const {
   updateRequest,
   cancelRequest,
   getVolunteerTracking,
-  getActiveMissionsTracking
+  getActiveMissionsTracking,
+  acceptRequest,
+  completeDelivery
 } = require('../controllers/donorRequestController');
 const { protect, requireDonor } = require('../middlewares/auth');
 
-// All donor request operations require authenticated user with DONOR role
+// Protected routes
 router.use(protect);
+
+// Acceptance and completion with single order concurrency enforcement
+router.post('/:id/accept', acceptRequest);
+router.post('/:id/complete', completeDelivery);
+
+// All subsequent donor management operations require DONOR role
 router.use(requireDonor);
 
 router.route('/')

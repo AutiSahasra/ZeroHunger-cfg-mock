@@ -197,6 +197,95 @@ async function runTests() {
     });
     assert(failUpdateRes.status === 400, 'Data integrity enforced: Editing non-PENDING request rejected with HTTP 400');
 
+    // 19. Single Order Concurrency Test: Only one order can be accepted at a time
+    console.log('\n--- Testing Single Order Concurrency Enforcement ---');
+    
+    // Create two new pending test requests from donor
+    const req1Res = await fetch(`${baseUrl}/api/requests`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${donorToken}` },
+      body: JSON.stringify({
+        foodType: 'Veg Meals Batch A',
+        quantity: 25,
+        cookedTime: new Date(Date.now() - 3600000).toISOString(),
+        expiryTime: new Date(Date.now() + 10800000).toISOString(),
+        pickupAddress: 'Guindy Delivery Hub, Chennai',
+        pickupLat: 13.0067,
+        pickupLng: 80.2026
+      })
+    });
+    const req1Data = await req1Res.json();
+    const id1 = req1Data.data._id;
+
+    const req2Res = await fetch(`${baseUrl}/api/requests`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${donorToken}` },
+      body: JSON.stringify({
+        foodType: 'Veg Meals Batch B',
+        quantity: 30,
+        cookedTime: new Date(Date.now() - 3600000).toISOString(),
+        expiryTime: new Date(Date.now() + 10800000).toISOString(),
+        pickupAddress: 'Saidapet Delivery Hub, Chennai',
+        pickupLat: 13.0200,
+        pickupLng: 80.2200
+      })
+    });
+    const req2Data = await req2Res.json();
+    const id2 = req2Data.data._id;
+
+    // Volunteer login (Ananya Swaminathan)
+    const volLoginRes = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: 'ananya.s@volunteer.org',
+        password: 'password123'
+      })
+    });
+    const volLoginData = await volLoginRes.json();
+    const volToken = volLoginData.token;
+
+    // Volunteer accepts first request -> Should SUCCEED
+    const accept1Res = await fetch(`${baseUrl}/api/requests/${id1}/accept`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${volToken}` }
+    });
+    const accept1Data = await accept1Res.json();
+    assert(accept1Res.status === 200 && accept1Data.data?.status === 'ACCEPTED', 'Volunteer successfully accepts 1st order when idle');
+
+    // Volunteer attempts to accept 2nd request while 1st is in progress -> MUST BE BLOCKED
+    const accept2Res = await fetch(`${baseUrl}/api/requests/${id2}/accept`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${volToken}` }
+    });
+    const accept2Data = await accept2Res.json();
+    assert(
+      accept2Res.status === 400 && accept2Data.message.includes('Single Order Concurrency Rule'),
+      'Single Order Concurrency Enforced: Volunteer blocked from accepting 2nd order while 1st order is in progress'
+    );
+
+    // Complete the 1st request -> Status becomes DELIVERED
+    const complete1Res = await fetch(`${baseUrl}/api/requests/${id1}/complete`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${volToken}` }
+    });
+    const complete1Data = await complete1Res.json();
+    assert(complete1Res.status === 200 && complete1Data.data.status === 'DELIVERED', '1st order completed and delivered; volunteer is now free');
+
+    // Now volunteer attempts to accept 2nd request again -> Should SUCCEED!
+    const accept2AgainRes = await fetch(`${baseUrl}/api/requests/${id2}/accept`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${volToken}` }
+    });
+    const accept2AgainData = await accept2AgainRes.json();
+    assert(accept2AgainRes.status === 200 && accept2AgainData.data.status === 'ACCEPTED', 'Once previous order is delivered, next order is successfully accepted by volunteer');
+
+    // Clean up 2nd request by completing it
+    await fetch(`${baseUrl}/api/requests/${id2}/complete`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${volToken}` }
+    });
+
   } catch (err) {
     console.error('Test execution error:', err);
     failed++;
