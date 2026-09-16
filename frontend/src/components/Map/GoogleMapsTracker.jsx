@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { loadGoogleMapsScript, isRealGoogleKey, getGoogleMapsApiKey } from '../../services/googleMapsLoader';
-import { Navigation, MapPin, Truck, RefreshCw, ExternalLink, ShieldCheck } from 'lucide-react';
+import { Navigation, MapPin, Truck, RefreshCw, ExternalLink, ShieldCheck, Clock } from 'lucide-react';
 
 export const GoogleMapsTracker = ({
   request,
