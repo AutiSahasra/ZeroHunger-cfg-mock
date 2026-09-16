@@ -16,7 +16,7 @@ import { useRequests } from '../context/RequestContext';
 import { resetDemoData } from '../services/storageService';
 
 export const Header = () => {
-  const { currentUser, currentPersona, switchPersona, selectedCity, setSelectedCity } = useAuth();
+  const { currentUser, currentPersona, logout, selectedCity, setSelectedCity } = useAuth();
   const { notifications, unreadCount, markNotifRead, refreshData } = useRequests();
   const [showNotifMenu, setShowNotifMenu] = useState(false);
 
@@ -44,28 +44,14 @@ export const Header = () => {
           </div>
         </div>
 
-        {/* Center: Interactive Persona Switcher */}
-        <div className="persona-switcher" title="Switch between user roles for testing">
+        {/* Center: Logout Button */}
+        <div className="persona-switcher" title="Log out of your account">
           <button
-            className={`persona-btn ${currentPersona === 'DONOR' ? 'active donor-mode' : ''}`}
-            onClick={() => switchPersona('DONOR')}
+            className={`persona-btn active`}
+            onClick={() => logout()}
           >
             <User size={16} />
-            <span>Donor</span>
-          </button>
-          <button
-            className={`persona-btn ${currentPersona === 'VOLUNTEER' ? 'active' : ''}`}
-            onClick={() => switchPersona('VOLUNTEER')}
-          >
-            <Truck size={16} />
-            <span>Volunteer</span>
-          </button>
-          <button
-            className={`persona-btn ${currentPersona === 'ADMIN' ? 'active admin-mode' : ''}`}
-            onClick={() => switchPersona('ADMIN')}
-          >
-            <ShieldCheck size={16} />
-            <span>Admin</span>
+            <span>Logout</span>
           </button>
         </div>
 

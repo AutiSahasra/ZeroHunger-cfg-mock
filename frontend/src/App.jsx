@@ -1,14 +1,25 @@
 import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { RequestProvider } from './context/RequestContext';
 import { Header } from './components/Header';
 import { DonorPortal } from './views/DonorPortal';
 import { VolunteerPortal } from './views/VolunteerPortal';
 import { AdminPortal } from './views/AdminPortal';
+import { Login } from './views/Login';
+import { Register } from './views/Register';
 import { HeartHandshake } from 'lucide-react';
 
 const MainLayout = () => {
-  const { currentPersona } = useAuth();
+  const { currentPersona, currentUser, loading } = useAuth();
+
+  if (loading) {
+    return <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>Loading...</div>;
+  }
+
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
+  }
 
   return (
     <div className="app-container">
@@ -41,11 +52,17 @@ const MainLayout = () => {
 
 export function App() {
   return (
-    <AuthProvider>
-      <RequestProvider>
-        <MainLayout />
-      </RequestProvider>
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <RequestProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/*" element={<MainLayout />} />
+          </Routes>
+        </RequestProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 

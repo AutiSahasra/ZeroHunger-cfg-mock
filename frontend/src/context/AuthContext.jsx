@@ -1,52 +1,75 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getUsers, initStorage } from '../services/storageService';
+import axios from 'axios';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [users, setUsers] = useState([]);
-  const [currentPersona, setCurrentPersona] = useState('DONOR'); // 'DONOR', 'VOLUNTEER', 'ADMIN'
   const [currentUser, setCurrentUser] = useState(null);
+  const [currentPersona, setCurrentPersona] = useState(null); 
+  const [loading, setLoading] = useState(true);
+  
+  // Temporary for compatibility with existing mock UI
   const [selectedCity, setSelectedCity] = useState('chennai');
 
   useEffect(() => {
-    initStorage();
-    const storedUsers = getUsers();
-    setUsers(storedUsers);
-    
-    // Default to first donor
-    const defaultDonor = storedUsers.find(u => u.role === 'DONOR');
-    setCurrentUser(defaultDonor || storedUsers[0]);
+    const checkLoggedIn = async () => {
+      try {
+        const res = await axios.get('http://localhost:5000/api/auth/me', {
+          withCredentials: true,
+        });
+        setCurrentUser(res.data);
+        setCurrentPersona(res.data.role);
+      } catch (error) {
+        setCurrentUser(null);
+        setCurrentPersona(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkLoggedIn();
   }, []);
 
-  const switchPersona = (role) => {
-    setCurrentPersona(role);
-    const storedUsers = getUsers();
-    const match = storedUsers.find(u => u.role === role);
-    if (match) {
-      setCurrentUser(match);
-    }
+  const login = async (email, password) => {
+    const res = await axios.post(
+      'http://localhost:5000/api/auth/login',
+      { email, password },
+      { withCredentials: true }
+    );
+    setCurrentUser(res.data);
+    setCurrentPersona(res.data.role);
+    return res.data;
   };
 
-  const switchUser = (userId) => {
-    const storedUsers = getUsers();
-    const found = storedUsers.find(u => u.id === userId);
-    if (found) {
-      setCurrentUser(found);
-      setCurrentPersona(found.role);
-    }
+  const register = async (userData) => {
+    const res = await axios.post(
+      'http://localhost:5000/api/auth/register',
+      userData,
+      { withCredentials: true }
+    );
+    setCurrentUser(res.data);
+    setCurrentPersona(res.data.role);
+    return res.data;
+  };
+
+  const logout = async () => {
+    await axios.post('http://localhost:5000/api/auth/logout', {}, { withCredentials: true });
+    setCurrentUser(null);
+    setCurrentPersona(null);
   };
 
   return (
     <AuthContext.Provider
       value={{
-        users,
         currentUser,
         currentPersona,
+        loading,
+        login,
+        register,
+        logout,
+        // Compatibility
         selectedCity,
         setSelectedCity,
-        switchPersona,
-        switchUser
       }}
     >
       {children}
