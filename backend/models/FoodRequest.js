@@ -3,13 +3,13 @@ const mongoose = require("mongoose");
 const foodRequestSchema = new mongoose.Schema(
   {
     donor: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: "User",
       required: true,
     },
 
     assignedVolunteer: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: "User",
       default: null,
     },
@@ -41,7 +41,7 @@ const foodRequestSchema = new mongoose.Schema(
     },
 
     region: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: "Region",
       required: true,
     },

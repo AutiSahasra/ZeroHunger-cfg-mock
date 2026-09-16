@@ -3,13 +3,13 @@ const mongoose = require("mongoose");
 const rejectionLogSchema = new mongoose.Schema(
   {
     request: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: "FoodRequest",
       required: true,
     },
 
     volunteer: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: "User",
       required: true,
     },

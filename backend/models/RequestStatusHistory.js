@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const requestStatusHistorySchema = new mongoose.Schema(
   {
     request: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: "FoodRequest",
       required: true,
     },
@@ -19,7 +19,7 @@ const requestStatusHistorySchema = new mongoose.Schema(
     },
 
     actor: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: "User",
       required: true,
     },
