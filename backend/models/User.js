@@ -19,7 +19,7 @@ const userSchema = new mongoose.Schema(
     },
     phone: { type: String },
     region: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: "Region",
     },
     isActive: { type: Boolean, default: true },

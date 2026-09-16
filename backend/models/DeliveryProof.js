@@ -3,14 +3,14 @@ const mongoose = require("mongoose");
 const deliveryProofSchema = new mongoose.Schema(
   {
     request: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: "FoodRequest",
       required: true,
       unique: true,
     },
 
     volunteer: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: "User",
       required: true,
     },
