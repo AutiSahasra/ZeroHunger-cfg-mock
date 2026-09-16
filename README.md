@@ -51,4 +51,26 @@ Once running, open your browser at the local Vite URL (default: `http://localhos
 4. **Donor Portal**: Surplus food broadcasts with golden-hour countdowns, status tracking, and impact metrics.
 5. **Volunteer Portal**: Available food rescue radar, atomic task claiming, active mission stepper, and delivery proof uploads (photos + GPS).
 6. **Admin Command Center**: State analytics, hunger hotspot clustering, volunteer approval queue, and priority engine tuning.
+
 ![alt text](image.png)
+
+---
+
+## 🔑 Mock Testing Credentials
+
+The following credentials are pre-seeded in the MongoDB Atlas database (`zerohunger`) for live testing across all roles:
+
+| Role | Name | Email Address | Password | Focus / Features to Test |
+| :--- | :--- | :--- | :--- | :--- |
+| 🛡️ **ADMIN** | Operations Admin | `admin@zerohunger.org` | `password123` | Operational metrics, volunteer approval queue, system-wide dispatch radar, rejection logs |
+| 🍽️ **DONOR** | ITC Grand Chola Banquets | `banquets@itcgrandchola.com` | `password123` | Create food requests, **520px hero Google Maps live tracking**, donor analytics & live chat |
+| 🍽️ **DONOR** | Annapoorna Catering Hall | `events@annapoornacatering.in` | `password123` | Multi-donor requests (T. Nagar region), notifications & active order tracking |
+| 🚴 **VOLUNTEER** | Karthik Raja | `karthik.raja@volunteer.org` | `password123` | **Single-order concurrency**, priority queue pickup feed, delivery proofs, live GPS updates |
+| 🚴 **VOLUNTEER** | Ananya Swaminathan | `ananya.s@volunteer.org` | `password123` | Volunteer portal, claiming available missions, chat with donors |
+
+### Reset / Re-seed Database
+To reset the testing database back to its initial mock state at any time, run:
+```bash
+cd backend
+npm run seed
+```
