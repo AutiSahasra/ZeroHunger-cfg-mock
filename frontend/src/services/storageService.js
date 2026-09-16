@@ -131,6 +131,25 @@ export function createRequest(newReqData, donorUser) {
   requests.unshift(newRequest);
   localStorage.setItem(STORAGE_KEYS.REQUESTS, JSON.stringify(requests));
 
+  // Sync to MongoDB database
+  try {
+    fetch('http://localhost:5000/api/requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-user-id': donorUser.id },
+      body: JSON.stringify({
+        title: newRequest.title,
+        foodType: newRequest.foodType,
+        servings: newRequest.servings,
+        quantity: newRequest.quantityKg,
+        pickupAddress: newRequest.pickupAddress,
+        pickupLat: newRequest.pickupLat,
+        pickupLng: newRequest.pickupLng,
+        regionId: newRequest.regionId,
+        instructions: newRequest.instructions
+      })
+    }).catch(e => console.warn('MongoDB sync note:', e.message));
+  } catch (e) {}
+
   // Add system notification for volunteers
   addNotification({
     userId: null,

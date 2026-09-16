@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   getAvailableRequests,
+  createFoodRequest,
   acceptRequest,
   rejectRequest,
   submitDeliveryProof,
@@ -11,7 +12,8 @@ const {
 } = require('../controllers/volunteerController');
 const { protect } = require('../middleware/authMiddleware');
 
-// Available requests in volunteer's region (sorted by distance & quantity priority queue)
+// Food requests endpoints
+router.post('/requests', protect, createFoodRequest);
 router.get('/requests/available', protect, getAvailableRequests);
 
 // Volunteer action endpoints on specific requests

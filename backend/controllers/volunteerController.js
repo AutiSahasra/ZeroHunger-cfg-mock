@@ -50,6 +50,58 @@ function computePriority(distKm, quantity, distWeight = 0.5, qtyWeight = 0.5) {
   return { compositeScore, distanceScore, quantityScore, urgencyTier };
 }
 
+// @desc    Create a new Food Request (Donor)
+// @route   POST /api/requests
+exports.createFoodRequest = async (req, res) => {
+  try {
+    const {
+      title,
+      foodType,
+      servings,
+      quantity,
+      pickupAddress,
+      pickupLat,
+      pickupLng,
+      regionId,
+      instructions
+    } = req.body;
+
+    const donorId = req.user?._id;
+    const region = regionId || req.user?.region || (await Region.findOne())?._id;
+
+    const newRequest = await FoodRequest.create({
+      donor: donorId,
+      foodDetails: {
+        foodType: title || foodType || 'Cooked Hot Meals',
+        description: instructions || ''
+      },
+      quantity: Number(quantity || servings || 20),
+      pickupLocation: {
+        address: pickupAddress || 'Pickup address',
+        coordinates: {
+          type: 'Point',
+          coordinates: [Number(pickupLng || 80.2207), Number(pickupLat || 13.0105)]
+        }
+      },
+      region,
+      status: 'PENDING',
+      priority: Math.min(100, Math.round((Number(servings || quantity || 20) / 100) * 80 + 20))
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Food rescue request created in database',
+      data: newRequest
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Error creating food request',
+      error: error.message
+    });
+  }
+};
+
 // @desc    Get pending requests in volunteer's region sorted by Priority Queue
 // @route   GET /api/requests/available?regionId=
 exports.getAvailableRequests = async (req, res) => {
