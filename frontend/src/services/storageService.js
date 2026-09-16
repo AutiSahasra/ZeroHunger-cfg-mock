@@ -168,6 +168,14 @@ export function acceptRequest(requestId, volunteerUser) {
 
   localStorage.setItem(STORAGE_KEYS.REQUESTS, JSON.stringify(requests));
 
+  // Sync to MongoDB backend
+  try {
+    fetch(`http://localhost:5000/api/requests/${requestId}/accept`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-user-id': volunteerUser.id }
+    }).catch(e => console.warn('MongoDB sync note:', e.message));
+  } catch (e) {}
+
   // Notify Donor
   addNotification({
     userId: requests[index].donorId,
@@ -195,6 +203,15 @@ export function updateRequestStatus(requestId, newStatus, user, notes = '') {
   });
 
   localStorage.setItem(STORAGE_KEYS.REQUESTS, JSON.stringify(requests));
+
+  // Sync to MongoDB backend
+  try {
+    fetch(`http://localhost:5000/api/requests/${requestId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-user-id': user.id },
+      body: JSON.stringify({ status: newStatus, notes })
+    }).catch(e => console.warn('MongoDB sync note:', e.message));
+  } catch (e) {}
 
   // Notify donor
   addNotification({
@@ -226,6 +243,15 @@ export function rejectRequest(requestId, volunteerUser, reason) {
   });
 
   localStorage.setItem(STORAGE_KEYS.REQUESTS, JSON.stringify(requests));
+
+  // Sync to MongoDB backend
+  try {
+    fetch(`http://localhost:5000/api/requests/${requestId}/reject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-user-id': volunteerUser.id },
+      body: JSON.stringify({ reason })
+    }).catch(e => console.warn('MongoDB sync note:', e.message));
+  } catch (e) {}
 
   addNotification({
     userId: requests[index].donorId,
@@ -266,6 +292,23 @@ export function submitDeliveryProof(requestId, volunteerUser, proofData) {
   });
 
   localStorage.setItem(STORAGE_KEYS.REQUESTS, JSON.stringify(requests));
+
+  // Sync to MongoDB backend
+  try {
+    fetch(`http://localhost:5000/api/requests/${requestId}/delivery-proof`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-user-id': volunteerUser.id },
+      body: JSON.stringify({
+        deliveryLocation: {
+          address: deliveryProof.deliverySpotName,
+          coordinates: [deliveryProof.deliveryLng, deliveryProof.deliveryLat]
+        },
+        foodImages: [deliveryProof.foodPhotoUrl],
+        deliverySpotImages: [deliveryProof.spotPhotoUrl],
+        notes: deliveryProof.volunteerNotes
+      })
+    }).catch(e => console.warn('MongoDB sync note:', e.message));
+  } catch (e) {}
 
   // Update volunteer stats
   updateVolunteerStats(volunteerUser.id, requests[index].quantityKg);
