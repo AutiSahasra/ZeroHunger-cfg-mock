@@ -11,7 +11,7 @@ const errorHandler = require('./src/middlewares/errorHandler');
 // Load environment variables
 dotenv.config();
 
-// Connect to MongoDB
+// Connect to MongoDB Atlas (zerohunger)
 connectDB();
 
 const app = express();
