@@ -59,6 +59,20 @@ export function getRequests() {
   return JSON.parse(localStorage.getItem(STORAGE_KEYS.REQUESTS) || '[]');
 }
 
+export async function syncWithBackendApi() {
+  try {
+    const res = await fetch('http://localhost:5000/api/requests');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.REQUESTS, JSON.stringify(data.data));
+        return data.data;
+      }
+    }
+  } catch (e) {}
+  return null;
+}
+
 export function getCities() {
   return JSON.parse(localStorage.getItem(STORAGE_KEYS.CITIES) || '[]');
 }

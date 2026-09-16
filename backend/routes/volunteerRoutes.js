@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const {
+  getAllRequests,
   getAvailableRequests,
   createFoodRequest,
   acceptRequest,
@@ -13,6 +14,7 @@ const {
 const { protect } = require('../middleware/authMiddleware');
 
 // Food requests endpoints
+router.get('/requests', protect, getAllRequests);
 router.post('/requests', protect, createFoodRequest);
 router.get('/requests/available', protect, getAvailableRequests);
 

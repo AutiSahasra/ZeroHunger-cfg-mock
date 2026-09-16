@@ -102,6 +102,46 @@ exports.createFoodRequest = async (req, res) => {
   }
 };
 
+// @desc    Get all requests from MongoDB (live sync)
+// @route   GET /api/requests
+exports.getAllRequests = async (req, res) => {
+  try {
+    const requests = await FoodRequest.find()
+      .populate('donor', 'name phone email')
+      .populate('assignedVolunteer', 'name phone email')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const formatted = requests.map(r => ({
+      id: r._id.toString(),
+      _id: r._id.toString(),
+      title: r.foodDetails?.foodType || 'Surplus Food',
+      foodType: r.foodDetails?.foodType || 'Cooked Meals',
+      servings: r.quantity,
+      quantityKg: Math.round(r.quantity * 0.4),
+      donorId: r.donor?._id ? r.donor._id.toString() : r.donor,
+      donorName: r.donor?.name || 'Registered Donor',
+      donorPhone: r.donor?.phone || '+91 98401 23456',
+      pickupAddress: r.pickupLocation?.address || 'Pickup Location',
+      pickupLat: r.pickupLocation?.coordinates ? r.pickupLocation.coordinates[1] : 13.0105,
+      pickupLng: r.pickupLocation?.coordinates ? r.pickupLocation.coordinates[0] : 80.2207,
+      status: r.status,
+      assignedVolunteerId: r.assignedVolunteer?._id ? r.assignedVolunteer._id.toString() : r.assignedVolunteer,
+      assignedVolunteerName: r.assignedVolunteer?.name,
+      createdAt: r.createdAt,
+      goldenHourExpiresInHours: 2.5
+    }));
+
+    return res.status(200).json({
+      success: true,
+      count: formatted.length,
+      data: formatted
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Error fetching requests', error: error.message });
+  }
+};
+
 // @desc    Get pending requests in volunteer's region sorted by Priority Queue
 // @route   GET /api/requests/available?regionId=
 exports.getAvailableRequests = async (req, res) => {
