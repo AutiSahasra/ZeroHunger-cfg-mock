@@ -46,6 +46,12 @@ exports.sendMessage = async (req, res) => {
       content: content.trim()
     });
 
+    // Broadcast via socket.io to real-time clients
+    const io = req.app.get('io');
+    if (io) {
+      io.to(requestId).emit('receive_message', message);
+    }
+
     return res.status(201).json({
       success: true,
       data: message
