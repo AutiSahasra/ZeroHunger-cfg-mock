@@ -52,7 +52,7 @@ Once running, open your browser at the local Vite URL (default: `http://localhos
 5. **Volunteer Portal**: Available food rescue radar, atomic task claiming, active mission stepper, and delivery proof uploads (photos + GPS).
 6. **Admin Command Center**: State analytics, hunger hotspot clustering, volunteer approval queue, and priority engine tuning.
 
-![alt text](image.png)
+
 
 ---
 
