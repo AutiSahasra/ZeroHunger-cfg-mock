@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   getRequests,
-  syncWithBackendApi,
   createRequest as apiCreateRequest,
   acceptRequest as apiAcceptRequest,
   updateRequestStatus as apiUpdateStatus,
@@ -30,9 +29,8 @@ export const RequestProvider = ({ children }) => {
   const [activeChatRequestId, setActiveChatRequestId] = useState(null);
   const [currentChatMessages, setCurrentChatMessages] = useState([]);
 
-  const refreshData = async () => {
-    const liveReqs = await syncWithBackendApi();
-    const reqs = liveReqs || getRequests();
+  const refreshData = () => {
+    const reqs = getRequests();
     setRequests(reqs);
     setNotifications(getNotifications(currentUser?.id));
     setHotspots(getHotspots());

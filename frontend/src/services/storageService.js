@@ -59,20 +59,6 @@ export function getRequests() {
   return JSON.parse(localStorage.getItem(STORAGE_KEYS.REQUESTS) || '[]');
 }
 
-export async function syncWithBackendApi() {
-  try {
-    const res = await fetch('http://localhost:5000/api/requests');
-    if (res.ok) {
-      const data = await res.json();
-      if (data.data && Array.isArray(data.data) && data.data.length > 0) {
-        localStorage.setItem(STORAGE_KEYS.REQUESTS, JSON.stringify(data.data));
-        return data.data;
-      }
-    }
-  } catch (e) {}
-  return null;
-}
-
 export function getCities() {
   return JSON.parse(localStorage.getItem(STORAGE_KEYS.CITIES) || '[]');
 }
@@ -145,25 +131,6 @@ export function createRequest(newReqData, donorUser) {
   requests.unshift(newRequest);
   localStorage.setItem(STORAGE_KEYS.REQUESTS, JSON.stringify(requests));
 
-  // Sync to MongoDB database
-  try {
-    fetch('http://localhost:5000/api/requests', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-user-id': donorUser.id },
-      body: JSON.stringify({
-        title: newRequest.title,
-        foodType: newRequest.foodType,
-        servings: newRequest.servings,
-        quantity: newRequest.quantityKg,
-        pickupAddress: newRequest.pickupAddress,
-        pickupLat: newRequest.pickupLat,
-        pickupLng: newRequest.pickupLng,
-        regionId: newRequest.regionId,
-        instructions: newRequest.instructions
-      })
-    }).catch(e => console.warn('MongoDB sync note:', e.message));
-  } catch (e) {}
-
   // Add system notification for volunteers
   addNotification({
     userId: null,
@@ -201,14 +168,6 @@ export function acceptRequest(requestId, volunteerUser) {
 
   localStorage.setItem(STORAGE_KEYS.REQUESTS, JSON.stringify(requests));
 
-  // Sync to MongoDB backend
-  try {
-    fetch(`http://localhost:5000/api/requests/${requestId}/accept`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-user-id': volunteerUser.id }
-    }).catch(e => console.warn('MongoDB sync note:', e.message));
-  } catch (e) {}
-
   // Notify Donor
   addNotification({
     userId: requests[index].donorId,
@@ -236,15 +195,6 @@ export function updateRequestStatus(requestId, newStatus, user, notes = '') {
   });
 
   localStorage.setItem(STORAGE_KEYS.REQUESTS, JSON.stringify(requests));
-
-  // Sync to MongoDB backend
-  try {
-    fetch(`http://localhost:5000/api/requests/${requestId}/status`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'x-user-id': user.id },
-      body: JSON.stringify({ status: newStatus, notes })
-    }).catch(e => console.warn('MongoDB sync note:', e.message));
-  } catch (e) {}
 
   // Notify donor
   addNotification({
@@ -276,15 +226,6 @@ export function rejectRequest(requestId, volunteerUser, reason) {
   });
 
   localStorage.setItem(STORAGE_KEYS.REQUESTS, JSON.stringify(requests));
-
-  // Sync to MongoDB backend
-  try {
-    fetch(`http://localhost:5000/api/requests/${requestId}/reject`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-user-id': volunteerUser.id },
-      body: JSON.stringify({ reason })
-    }).catch(e => console.warn('MongoDB sync note:', e.message));
-  } catch (e) {}
 
   addNotification({
     userId: requests[index].donorId,
@@ -325,23 +266,6 @@ export function submitDeliveryProof(requestId, volunteerUser, proofData) {
   });
 
   localStorage.setItem(STORAGE_KEYS.REQUESTS, JSON.stringify(requests));
-
-  // Sync to MongoDB backend
-  try {
-    fetch(`http://localhost:5000/api/requests/${requestId}/delivery-proof`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-user-id': volunteerUser.id },
-      body: JSON.stringify({
-        deliveryLocation: {
-          address: deliveryProof.deliverySpotName,
-          coordinates: [deliveryProof.deliveryLng, deliveryProof.deliveryLat]
-        },
-        foodImages: [deliveryProof.foodPhotoUrl],
-        deliverySpotImages: [deliveryProof.spotPhotoUrl],
-        notes: deliveryProof.volunteerNotes
-      })
-    }).catch(e => console.warn('MongoDB sync note:', e.message));
-  } catch (e) {}
 
   // Update volunteer stats
   updateVolunteerStats(volunteerUser.id, requests[index].quantityKg);
@@ -438,22 +362,6 @@ export function sendChatMessage(requestId, senderUser, text) {
 
   messages.push(newMessage);
   localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(messages));
-
-  // Sync to MongoDB database
-  try {
-    fetch('http://localhost:5000/api/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        requestId,
-        senderId: senderUser.id,
-        senderName: senderUser.name,
-        senderRole: senderUser.role,
-        content: text
-      })
-    }).catch(err => console.warn('MongoDB sync note:', err.message));
-  } catch (e) {}
-
   return newMessage;
 }
 
