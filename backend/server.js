@@ -6,6 +6,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const connectDB = require('./config/db');
 const Message = require('./models/Message');
+const errorHandler = require('./src/middlewares/errorHandler');
 
 // Load environment variables
 dotenv.config();
@@ -81,29 +82,61 @@ io.on('connection', (socket) => {
   });
 });
 
-// Routes
-const authRoutes = require('./routes/authRoutes');
-const adminRoutes = require('./routes/adminRoutes');
-const volunteerRoutes = require('./routes/volunteerRoutes');
-const messageRoutes = require('./routes/messageRoutes');
-
-app.use('/api/auth', authRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api', volunteerRoutes);
-app.use('/api/messages', messageRoutes);
-
-// Health Check & Root Route
+// Health Check API
 app.get('/api/health', (req, res) => {
   res.status(200).json({
-    status: 'OK',
-    service: 'ZeroHunger Backend API (Auth + Admin + Volunteer + WebSockets)',
+    success: true,
+    status: 'ONLINE',
+    service: 'Zero Hunger — Food Rescue Platform Backend',
+    modules: ['Auth', 'Admin', 'Volunteer', 'Donor Requests', 'Donor Analytics', 'Donor Chat', 'Notifications', 'Google Maps API', 'WebSockets'],
     database: 'Connected to MongoDB Atlas (zerohunger)',
     timestamp: new Date().toISOString()
   });
 });
 
+// Mount Routes
+// Auth & Admin Modules
+app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/messages', require('./routes/messageRoutes'));
+
+// Donor Module & Google Maps Integration
+app.use('/api/requests', require('./src/routes/donorRequestRoutes'));
+app.use('/api/requests/:id/messages', require('./src/routes/donorChatRoutes'));
+app.use('/api/donors/me', require('./src/routes/donorStatsRoutes'));
+app.use('/api/notifications', require('./src/routes/notificationRoutes'));
+app.use('/api/maps', require('./src/routes/mapRoutes'));
+
+// Volunteer Module
+app.use('/api', require('./routes/volunteerRoutes'));
+
+// 404 Catch-All Route
+app.use('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Endpoint not found: ${req.method} ${req.originalUrl}`
+  });
+});
+
+// Centralized Error Handling Middleware
+app.use(errorHandler);
+
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, () => {
-  console.log(`🚀 ZeroHunger Backend server running on http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  server.listen(PORT, () => {
+    console.log(`====================================================`);
+    console.log(`🚀 ZeroHunger Full Backend Server running on port ${PORT}`);
+    console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🗺️  Google Maps API: ${process.env.GOOGLE_MAPS_API_KEY ? 'Configured' : 'Not Set'}`);
+    console.log(`🔌 WebSockets: Enabled`);
+    console.log(`====================================================`);
+  });
+
+  // Handle unhandled promise rejections
+  process.on('unhandledRejection', (err) => {
+    console.error(`Unhandled Rejection Error: ${err.message}`);
+  });
+}
+
+module.exports = { app, server };

@@ -34,4 +34,4 @@ const regionSchema = new mongoose.Schema(
 
 regionSchema.index({ center: "2dsphere" });
 
-module.exports = mongoose.model("Region", regionSchema);
+module.exports = mongoose.models.Region || mongoose.model("Region", regionSchema);

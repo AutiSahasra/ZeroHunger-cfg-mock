@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 // Generate JWT Helper
 const generateToken = (res, userId) => {
   const secret = process.env.JWT_SECRET || 'supersecretjwtkey_replace_me_in_production';
-  const token = jwt.sign({ userId }, secret, {
+  const token = jwt.sign({ userId, id: userId }, secret, {
     expiresIn: '30d',
   });
 
@@ -14,6 +14,8 @@ const generateToken = (res, userId) => {
     sameSite: 'strict', // Prevent CSRF attacks
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
   });
+
+  return token;
 };
 
 // @desc    Register a new user
@@ -43,18 +45,25 @@ const registerUser = async (req, res) => {
     });
 
     if (user) {
-      // Return user without generating token yet, or generate token based on preference.
-      // Usually, they log in immediately if active.
+      let token = null;
       if (user.isActive) {
-        generateToken(res, user._id);
+        token = generateToken(res, user._id);
       }
       
       res.status(201).json({
+        success: true,
+        token,
         _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
         isActive: user.isActive,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role
+        }
       });
     } else {
       res.status(400).json({ message: 'Invalid user data' });
@@ -74,14 +83,22 @@ const loginUser = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (user && (await user.matchPassword(password))) {
-      generateToken(res, user._id);
+      const token = generateToken(res, user._id);
 
       res.status(200).json({
+        success: true,
+        token,
         _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
         isActive: user.isActive,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role
+        }
       });
     } else {
       res.status(401).json({ message: 'Invalid email or password' });
@@ -115,6 +132,14 @@ const getMe = async (req, res) => {
         email: user.email,
         role: user.role,
         isActive: user.isActive,
+        user: {
+          id: user._id,
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          isActive: user.isActive,
+        },
       });
     } else {
       res.status(404).json({ message: 'User not found' });

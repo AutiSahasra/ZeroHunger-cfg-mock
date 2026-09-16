@@ -54,6 +54,10 @@ export const VolunteerPortal = () => {
   );
 
   const handleClaim = (req) => {
+    if (activeMission) {
+      alert(`Single Order Concurrency Rule: You already have an active mission in progress ("${activeMission.title}"). Only one order can be accepted at a time. Once there is no order in progress, then only the next order gets assigned.`);
+      return;
+    }
     try {
       acceptRequest(req.id);
       setSelectedRequest(req);
@@ -277,6 +281,27 @@ export const VolunteerPortal = () => {
               </span>
             </div>
 
+            {/* Single Order Concurrency Alert Banner */}
+            {activeMission && (
+              <div
+                style={{
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '12px 16px',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}
+              >
+                <AlertTriangle size={20} style={{ color: '#0284c7', flexShrink: 0 }} />
+                <div style={{ fontSize: '0.82rem', color: '#1e40af', lineHeight: 1.4 }}>
+                  <b>Single Order Concurrency Active:</b> You have an ongoing mission (<b>{activeMission.title}</b>). Per safety guidelines, only one order can be accepted at a time. Once your current delivery is verified &amp; completed, next orders will be unlocked.
+                </div>
+              </div>
+            )}
+
             {availableRequests.length === 0 ? (
               <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--slate-400)' }}>
                 <CheckCircle2 size={36} style={{ margin: '0 auto 10px', color: 'var(--primary-600)' }} />
@@ -357,11 +382,11 @@ export const VolunteerPortal = () => {
                           isPendingApproval
                             ? 'Volunteer profile pending approval'
                             : activeMission
-                            ? 'Complete active mission first'
+                            ? `Active mission in progress ("${activeMission.title}"). Complete it first to accept next order.`
                             : 'Claim and navigate'
                         }
                       >
-                        <Truck size={14} /> Claim &amp; Start Rescue
+                        <Truck size={14} /> {activeMission ? 'Locked (1 Order In Progress)' : 'Claim & Start Rescue'}
                       </button>
                     </div>
                   </div>

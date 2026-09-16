@@ -31,7 +31,7 @@ const volunteerLocationSchema = new mongoose.Schema(
 
 volunteerLocationSchema.index({ location: "2dsphere" });
 
-module.exports = mongoose.model(
+module.exports = mongoose.models.VolunteerLocation || mongoose.model(
   "VolunteerLocation",
   volunteerLocationSchema
 );

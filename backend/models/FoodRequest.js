@@ -76,4 +76,4 @@ foodRequestSchema.index({
   priority: -1,
 });
 
-module.exports = mongoose.model("FoodRequest", foodRequestSchema);
+module.exports = mongoose.models.FoodRequest || mongoose.model("FoodRequest", foodRequestSchema);

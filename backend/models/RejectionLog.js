@@ -23,4 +23,4 @@ const rejectionLogSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("RejectionLog", rejectionLogSchema);
+module.exports = mongoose.models.RejectionLog || mongoose.model("RejectionLog", rejectionLogSchema);

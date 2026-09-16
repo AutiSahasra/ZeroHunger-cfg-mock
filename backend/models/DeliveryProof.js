@@ -56,4 +56,4 @@ deliveryProofSchema.index({
   "deliveryLocation.coordinates": "2dsphere",
 });
 
-module.exports = mongoose.model("DeliveryProof", deliveryProofSchema);
+module.exports = mongoose.models.DeliveryProof || mongoose.model("DeliveryProof", deliveryProofSchema);

@@ -33,7 +33,7 @@ const requestStatusHistorySchema = new mongoose.Schema(
 
 requestStatusHistorySchema.index({ request: 1, createdAt: 1 });
 
-module.exports = mongoose.model(
+module.exports = mongoose.models.RequestStatusHistory || mongoose.model(
   "RequestStatusHistory",
   requestStatusHistorySchema
 );

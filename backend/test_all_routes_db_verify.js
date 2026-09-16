@@ -21,7 +21,7 @@ async function runFullVerification() {
 
   // 1. Connect to MongoDB Atlas
   console.log('1️⃣ Connecting directly to MongoDB Atlas to verify persistence...');
-  await mongoose.connect(process.env.MONGO_URI);
+  await mongoose.connect(process.env.MONGO_URI, { dbName: 'zerohunger' });
   console.log(`   ✅ Connected to Database: ${mongoose.connection.name} on ${mongoose.connection.host}\n`);
 
   const volunteer = await User.findOne({ role: 'VOLUNTEER' });

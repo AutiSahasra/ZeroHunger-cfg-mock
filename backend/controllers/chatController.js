@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Message = require('../models/Message');
 const FoodRequest = require('../models/FoodRequest');
 
@@ -6,7 +7,10 @@ const FoodRequest = require('../models/FoodRequest');
 exports.getMessages = async (req, res) => {
   try {
     const { requestId } = req.params;
-    const messages = await Message.find({ request: requestId })
+    const requestFilter = mongoose.Types.ObjectId.isValid(requestId)
+      ? { $in: [requestId, new mongoose.Types.ObjectId(requestId)] }
+      : requestId;
+    const messages = await Message.find({ request: requestFilter })
       .populate('sender', 'name role')
       .sort({ createdAt: 1 });
 

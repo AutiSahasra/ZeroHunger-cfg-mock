@@ -9,11 +9,12 @@ import {
   CheckCircle2,
   HeartHandshake,
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  Navigation
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useRequests } from '../context/RequestContext';
-import { MapViewer } from '../components/Map/MapViewer';
+import { GoogleMapsTracker } from '../components/Map/GoogleMapsTracker';
 import { NewRequestModal } from '../components/Modals/NewRequestModal';
 import { RequestDetailModal } from '../components/Modals/RequestDetailModal';
 import { ChatModal } from '../components/Chat/ChatModal';
@@ -29,11 +30,18 @@ export const DonorPortal = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isCancelOpen, setIsCancelOpen] = useState(false);
   const [filterTab, setFilterTab] = useState('ALL'); // 'ALL', 'ACTIVE', 'COMPLETED'
+  const [activeTrackedRequest, setActiveTrackedRequest] = useState(null);
+  const [mapMode, setMapMode] = useState('GOOGLE_MAPS_TRACKER'); // 'GOOGLE_MAPS_TRACKER', 'OVERVIEW'
 
   // Filter requests for current donor
   const myRequests = requests.filter(
     (r) => r.donorId === currentUser?.id || r.donorName === currentUser?.name
   );
+
+  const assignedRequest = myRequests.find((r) =>
+    ['ACCEPTED', 'IN_PROGRESS'].includes(r.status) || r.assignedVolunteerName || r.assignedVolunteer
+  );
+  const currentTracked = activeTrackedRequest || assignedRequest || myRequests[0];
 
   const activeRequests = myRequests.filter((r) =>
     ['PENDING', 'ACCEPTED', 'IN_PROGRESS'].includes(r.status)
@@ -140,8 +148,135 @@ export const DonorPortal = () => {
         </div>
       </div>
 
-      {/* Main Grid: Requests List (Left) + Interactive Pickup Map (Right) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)', gap: '24px' }}>
+      {/* 🗺️ LARGE GOOGLE MAPS LIVE TRACKING HERO SECTION (Full Width, Prominent) */}
+      <div
+        id="donor-live-tracking-map"
+        className="card"
+        style={{
+          padding: '24px',
+          marginBottom: '28px',
+          borderRadius: 'var(--radius-xl)',
+          boxShadow: 'var(--shadow-md)',
+          border: '1px solid var(--border-subtle)',
+          background: 'white'
+        }}
+      >
+        <div
+          style={{
+            marginBottom: '16px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div
+              style={{
+                background: '#e0f2fe',
+                color: '#0284c7',
+                padding: '10px',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <Navigation size={22} />
+            </div>
+            <div>
+              <div
+                style={{
+                  fontSize: '1.25rem',
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  color: 'var(--slate-900)'
+                }}
+              >
+                <span>Live Volunteer GPS Tracking</span>
+                {currentTracked && (
+                  <span
+                    className={`badge badge-${(currentTracked.status || 'PENDING').toLowerCase()}`}
+                    style={{ fontSize: '0.74rem', padding: '3px 8px' }}
+                  >
+                    {currentTracked.status === 'ACCEPTED' ? 'Volunteer En Route' : currentTracked.status}
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: '0.84rem', color: 'var(--slate-500)', marginTop: '2px' }}>
+                {currentTracked ? (
+                  <span>
+                    Tracking Mission: <b>{currentTracked.title}</b>
+                    {currentTracked.assignedVolunteerName && (
+                      <> • Assigned Volunteer: <b style={{ color: '#0284c7' }}>{currentTracked.assignedVolunteerName}</b></>
+                    )}
+                  </span>
+                ) : (
+                  <span>Real-time dispatch route connecting assigned volunteer to your food pickup location</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {activeRequests.length > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--slate-500)', fontWeight: 600 }}>Switch Mission:</span>
+                <select
+                  value={currentTracked?.id || currentTracked?._id || ''}
+                  onChange={(e) => {
+                    const found = myRequests.find((r) => (r.id || r._id) === e.target.value);
+                    if (found) setActiveTrackedRequest(found);
+                  }}
+                  style={{
+                    padding: '6px 10px',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-subtle)',
+                    background: 'white',
+                    color: 'var(--slate-800)'
+                  }}
+                >
+                  {activeRequests.map((r) => (
+                    <option key={r.id || r._id} value={r.id || r._id}>
+                      {r.title} ({r.status})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <span
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: 800,
+                color: '#0284c7',
+                background: '#e0f2fe',
+                padding: '4px 12px',
+                borderRadius: '20px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <span className="pulse-dot" style={{ background: '#0284c7' }} /> Google Maps Engine
+            </span>
+          </div>
+        </div>
+
+        {/* Large Map Canvas */}
+        <GoogleMapsTracker
+          request={currentTracked}
+          height="520px"
+        />
+      </div>
+
+      {/* 📋 ALL INFORMATION SECTION BELOW THE LARGE MAP */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.45fr) minmax(0, 1fr)', gap: '24px' }}>
         {/* Left Column: Requests Management */}
         <div>
           <div className="card" style={{ padding: '20px' }}>
@@ -245,17 +380,38 @@ export const DonorPortal = () => {
                         <Eye size={14} /> Details &amp; Audit
                       </button>
 
-                      {req.assignedVolunteerId && (
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => {
-                            setSelectedRequest(req);
-                            setActiveChatRequestId(req.id);
-                            setIsChatOpen(true);
-                          }}
-                        >
-                          <MessageSquare size={14} /> Chat
-                        </button>
+                      {(req.assignedVolunteerId || req.assignedVolunteerName || req.assignedVolunteer) && (
+                        <>
+                          <button
+                            className="btn btn-sm"
+                            style={{
+                              background: currentTracked?.id === req.id || currentTracked?._id === req._id ? '#0284c7' : 'var(--slate-100)',
+                              color: currentTracked?.id === req.id || currentTracked?._id === req._id ? 'white' : 'var(--slate-700)',
+                              fontWeight: 700
+                            }}
+                            onClick={() => {
+                              setActiveTrackedRequest(req);
+                              setMapMode('GOOGLE_MAPS_TRACKER');
+                              const mapEl = document.getElementById('donor-live-tracking-map');
+                              if (mapEl) {
+                                mapEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                              }
+                            }}
+                          >
+                            <Navigation size={14} /> Track on Map
+                          </button>
+
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => {
+                              setSelectedRequest(req);
+                              setActiveChatRequestId(req.id || req._id);
+                              setIsChatOpen(true);
+                            }}
+                          >
+                            <MessageSquare size={14} /> Chat
+                          </button>
+                        </>
                       )}
 
                       {req.status === 'PENDING' && (
@@ -277,35 +433,82 @@ export const DonorPortal = () => {
           </div>
         </div>
 
-        {/* Right Column: Live Dispatch Map & Food Rescue Tips */}
-        <div>
-          <div className="card" style={{ marginBottom: '20px' }}>
-            <div className="card-header" style={{ marginBottom: '12px' }}>
-              <div className="card-title" style={{ fontSize: '1rem' }}>
-                <MapPin size={18} style={{ color: 'var(--primary-600)' }} />
-                <span>Active Pickup Locations</span>
+        {/* Right Column: Active Mission Details & Golden Hour Guidelines */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Active Mission Card */}
+          {currentTracked ? (
+            <div className="card" style={{ padding: '20px', borderLeft: '4px solid #0284c7' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <span style={{ fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#0284c7' }}>
+                  Mission Underway
+                </span>
+                <span className={`badge badge-${(currentTracked.status || 'pending').toLowerCase()}`}>
+                  {currentTracked.status}
+                </span>
               </div>
-              <span style={{ fontSize: '0.74rem', color: 'var(--slate-500)' }}>
-                Live GPS Radar
-              </span>
-            </div>
 
-            <MapViewer
-              requests={myRequests}
-              height="320px"
-              showHotspots={false}
-              onSelectRequest={(r) => {
-                setSelectedRequest(r);
-                setIsDetailOpen(true);
-              }}
-            />
-            <div style={{ fontSize: '0.72rem', color: 'var(--slate-500)', marginTop: '8px', textAlign: 'center' }}>
-              Pins represent your surplus pickup spots in Chennai / region.
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--slate-900)', marginBottom: '8px' }}>
+                {currentTracked.title}
+              </h3>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.84rem', color: 'var(--slate-600)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Utensils size={15} style={{ color: 'var(--primary-600)' }} />
+                  <span>{currentTracked.servings} Servings ({currentTracked.quantityKg || Math.round(currentTracked.servings * 0.4)} kg) • {currentTracked.dietary || 'Standard Meals'}</span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                  <MapPin size={15} style={{ color: 'var(--primary-600)', marginTop: '2px', flexShrink: 0 }} />
+                  <span>{currentTracked.pickupAddress}</span>
+                </div>
+
+                {currentTracked.assignedVolunteerName && (
+                  <div style={{ background: '#f0f9ff', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid #bae6fd', marginTop: '4px' }}>
+                    <div style={{ fontWeight: 700, color: '#0369a1', marginBottom: '2px' }}>
+                      Volunteer: {currentTracked.assignedVolunteerName}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#0284c7' }}>
+                      {currentTracked.assignedVolunteerPhone ? `Phone: ${currentTracked.assignedVolunteerPhone}` : 'Connected via GPS live dispatch'}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                <button
+                  className="btn btn-primary btn-sm"
+                  style={{ flex: 1 }}
+                  onClick={() => {
+                    setSelectedRequest(currentTracked);
+                    setActiveChatRequestId(currentTracked.id || currentTracked._id);
+                    setIsChatOpen(true);
+                  }}
+                >
+                  <MessageSquare size={14} /> Open Volunteer Chat
+                </button>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => {
+                    setSelectedRequest(currentTracked);
+                    setIsDetailOpen(true);
+                  }}
+                >
+                  <Eye size={14} /> Audit Trail
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="card" style={{ padding: '24px', textAlign: 'center', color: 'var(--slate-500)' }}>
+              <Navigation size={32} style={{ margin: '0 auto 10px', color: '#0284c7', opacity: 0.7 }} />
+              <div style={{ fontWeight: 700, color: 'var(--slate-800)' }}>No Active Mission Selected</div>
+              <p style={{ fontSize: '0.82rem', marginTop: '4px' }}>
+                When a volunteer claims your surplus food request, live GPS tracking and route information will update automatically above.
+              </p>
+            </div>
+          )}
 
           {/* Golden Hour Guidelines Card */}
-          <div className="card" style={{ background: 'var(--slate-900)', color: 'white' }}>
+          <div className="card" style={{ background: 'var(--slate-900)', color: 'white', padding: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
               <Clock size={18} style={{ color: 'var(--amber-400)' }} />
               <h4 style={{ color: 'white', fontSize: '0.96rem', fontWeight: 700 }}>
@@ -313,7 +516,7 @@ export const DonorPortal = () => {
               </h4>
             </div>
             <p style={{ fontSize: '0.8rem', color: 'var(--slate-300)', lineHeight: 1.5 }}>
-              Cooked surplus food retains optimal nutrition and hygiene if redistributed within <b>3 hours</b> of completion. Our priority engine directs nearest volunteers immediately upon submission.
+              Cooked surplus food retains optimal nutrition and hygiene if redistributed within <b>3 hours</b> of completion. Our priority dispatch engine routes the nearest available volunteer to your pickup point.
             </p>
           </div>
         </div>
