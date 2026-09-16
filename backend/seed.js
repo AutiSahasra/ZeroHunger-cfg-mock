@@ -92,6 +92,15 @@ const seedData = async () => {
       isActive: true
     });
 
+    const admin = await User.create({
+      name: 'Operations Admin',
+      email: 'admin@zerohunger.org',
+      password: 'password123',
+      role: 'ADMIN',
+      phone: '+91 99999 00001',
+      isActive: true
+    });
+
     console.log('🌱 Seeding Volunteer Locations...');
     await VolunteerLocation.create({
       volunteer: volunteer1._id,
