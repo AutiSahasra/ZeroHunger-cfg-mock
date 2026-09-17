@@ -17,12 +17,22 @@ const foodRequestSchema = new mongoose.Schema(
     foodDetails: {
       foodType: { type: String, required: true },
       description: { type: String },
+      category: { type: String },
+      dietary: { type: String },
+      instructions: { type: String },
+      photoUrl: { type: String },
+      cookedTime: { type: String },
+      goldenHourExpiresInHours: { type: Number, default: 3.0 }
     },
 
     quantity: {
       type: Number,
       required: true,
       min: 1,
+    },
+    
+    quantityKg: {
+      type: Number,
     },
 
     pickupLocation: {

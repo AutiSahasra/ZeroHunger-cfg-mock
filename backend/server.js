@@ -3,6 +3,7 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const dotenv = require('dotenv');
 const http = require('http');
+const path = require('path');
 const { Server } = require('socket.io');
 const connectDB = require('./config/db');
 const Message = require('./models/Message');
@@ -20,7 +21,7 @@ const server = http.createServer(app);
 // Setup Socket.io
 const io = new Server(server, {
   cors: {
-    origin: '*',
+    origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE']
   }
@@ -34,6 +35,9 @@ app.use(cors({
   origin: true,
   credentials: true
 }));
+
+// Serve static uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Attach io instance to express app so routes can broadcast
 app.set('io', io);
@@ -99,6 +103,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/messages', require('./routes/messageRoutes'));
+app.use('/api/upload', require('./routes/uploadRoutes'));
 
 // Donor Module & Google Maps Integration
 app.use('/api/requests', require('./src/routes/donorRequestRoutes'));

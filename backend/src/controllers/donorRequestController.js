@@ -112,6 +112,11 @@ exports.createRequest = async (req, res, next) => {
       .populate('donor', 'name email phone address')
       .populate('region', 'name city');
 
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('new_food_request', populated);
+    }
+
     res.status(201).json({
       success: true,
       message: 'Surplus food request posted successfully.',
@@ -297,6 +302,11 @@ exports.updateRequest = async (req, res, next) => {
       reason: 'Donor updated food request details'
     });
 
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('request_status_updated', request);
+    }
+
     res.status(200).json({
       success: true,
       message: 'Donation request updated successfully.',
@@ -350,6 +360,11 @@ exports.cancelRequest = async (req, res, next) => {
       actor: req.user._id,
       reason
     });
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('request_status_updated', request);
+    }
 
     res.status(200).json({
       success: true,
@@ -607,6 +622,11 @@ exports.acceptRequest = async (req, res, next) => {
       reason: 'Claimed food rescue mission (Single active order accepted)'
     });
 
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('request_status_updated', request);
+    }
+
     res.status(200).json({
       success: true,
       message: 'Request accepted successfully. Volunteer is now actively delivering this mission.',
@@ -640,6 +660,11 @@ exports.completeDelivery = async (req, res, next) => {
       actor: req.user._id,
       reason: 'Delivery completed and verified. Volunteer is now free to accept next mission.'
     });
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('request_status_updated', request);
+    }
 
     res.status(200).json({
       success: true,

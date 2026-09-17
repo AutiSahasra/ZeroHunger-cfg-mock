@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from '../services/apiClient';
 import {
   ShieldCheck,
   TrendingUp,
@@ -26,6 +26,7 @@ export const AdminPortal = () => {
   const [requests, setRequests] = useState([]);
   const [analytics, setAnalytics] = useState({ totalRequests: 0, statusCounts: {}, totalFoodDelivered: 0 });
   const [hotspots, setHotspots] = useState([]);
+  const [selectedProof, setSelectedProof] = useState(null);
   
   const [statusFilter, setStatusFilter] = useState('');
   
@@ -35,7 +36,7 @@ export const AdminPortal = () => {
   // Fetch Data
   const fetchVolunteers = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/admin/volunteers', { withCredentials: true });
+      const res = await apiClient.get('/admin/volunteers');
       setVolunteers(res.data);
     } catch (err) {
       console.error(err);
@@ -44,7 +45,7 @@ export const AdminPortal = () => {
 
   const fetchRegions = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/admin/regions', { withCredentials: true });
+      const res = await apiClient.get('/admin/regions');
       setRegions(res.data);
     } catch (err) {
       console.error(err);
@@ -53,7 +54,7 @@ export const AdminPortal = () => {
 
   const fetchRequests = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/admin/requests?status=${statusFilter}`, { withCredentials: true });
+      const res = await apiClient.get(`/admin/requests?status=${statusFilter}`);
       setRequests(res.data);
     } catch (err) {
       console.error(err);
@@ -62,7 +63,7 @@ export const AdminPortal = () => {
 
   const fetchAnalytics = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/admin/analytics/overview', { withCredentials: true });
+      const res = await apiClient.get('/admin/analytics/overview');
       setAnalytics(res.data);
     } catch (err) {
       console.error(err);
@@ -71,7 +72,7 @@ export const AdminPortal = () => {
 
   const fetchHotspots = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/admin/analytics/hotspots', { withCredentials: true });
+      const res = await apiClient.get('/admin/analytics/hotspots');
       setHotspots(res.data);
     } catch (err) {
       console.error(err);
@@ -91,34 +92,38 @@ export const AdminPortal = () => {
 
   const handleApproveVolunteer = async (id) => {
     try {
-      await axios.post(`http://localhost:5000/api/admin/volunteers/${id}/approve`, {}, { withCredentials: true });
+      await apiClient.post(`/admin/volunteers/${id}/approve`);
       fetchVolunteers();
     } catch (err) {
       console.error(err);
     }
   };
 
-  const handleDeactivateVolunteer = async (id) => {
+  const handleRemoveVolunteer = async (id) => {
+    if (!window.confirm('Are you sure you want to remove/reject this volunteer?')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/admin/volunteers/${id}`, { withCredentials: true });
+      await apiClient.delete(`/admin/volunteers/${id}`);
       fetchVolunteers();
     } catch (err) {
       console.error(err);
+      alert('Failed to remove volunteer.');
     }
   };
 
   const handleCreateRegion = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5000/api/admin/regions', {
+      await apiClient.post('/admin/regions', {
         ...newRegion,
         longitude: parseFloat(newRegion.longitude),
         latitude: parseFloat(newRegion.latitude)
-      }, { withCredentials: true });
+      });
       setNewRegion({ city: '', name: '', longitude: '', latitude: '' });
       fetchRegions();
+      alert('Region added successfully!');
     } catch (err) {
       console.error(err);
+      alert('Failed to add region: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -220,9 +225,12 @@ export const AdminPortal = () => {
                   </td>
                   <td style={{ padding: '12px', textAlign: 'right' }}>
                     {!vol.isActive ? (
-                      <button onClick={() => handleApproveVolunteer(vol._id)} style={{ background: '#059669', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', marginRight: '8px' }}>Approve</button>
+                      <>
+                        <button onClick={() => handleApproveVolunteer(vol._id)} style={{ background: '#059669', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', marginRight: '8px' }}>Approve</button>
+                        <button onClick={() => handleRemoveVolunteer(vol._id)} style={{ background: '#dc2626', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer' }}>Reject</button>
+                      </>
                     ) : (
-                      <button onClick={() => handleDeactivateVolunteer(vol._id)} style={{ background: '#dc2626', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer' }}>Deactivate</button>
+                      <button onClick={() => handleRemoveVolunteer(vol._id)} style={{ background: '#dc2626', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer' }}>Revoke Access</button>
                     )}
                   </td>
                 </tr>
@@ -328,8 +336,8 @@ export const AdminPortal = () => {
                       <button 
                         onClick={async () => {
                           try {
-                            const res = await axios.get(`http://localhost:5000/api/admin/requests/${req._id}/proof`, { withCredentials: true });
-                            alert(`Proof fetched for ${req._id}. Volunteer: ${res.data.volunteer?.name}. Coords: ${res.data.deliveryLocation?.coordinates?.coordinates.join(', ')}`);
+                            const res = await apiClient.get(`/admin/requests/${req._id}/proof`);
+                            setSelectedProof(res.data);
                           } catch (err) {
                             alert('No proof found or error fetching proof.');
                           }
@@ -347,6 +355,54 @@ export const AdminPortal = () => {
         </div>
       )}
 
+      {selectedProof && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div style={{ background: 'white', padding: '24px', borderRadius: '12px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}><CheckCircle2 size={24} color="#059669"/> Delivery Proof</h2>
+              <button onClick={() => setSelectedProof(null)} style={{ background: 'transparent', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>&times;</button>
+            </div>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Volunteer</div>
+              <div style={{ color: '#475569' }}>{selectedProof.volunteer?.name || 'Unknown'}</div>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Delivery Location</div>
+              <div style={{ color: '#475569' }}>{selectedProof.deliveryLocation?.address || 'Not Provided'}</div>
+              <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: '4px' }}>
+                Coords: {selectedProof.deliveryLocation?.coordinates?.coordinates?.join(', ') || 'N/A'}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Food Image</div>
+              {selectedProof.foodImages && selectedProof.foodImages.length > 0 && selectedProof.foodImages[0].url ? (
+                <img src={selectedProof.foodImages[0].url} alt="Food Proof" style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+              ) : (
+                <div style={{ padding: '20px', background: '#f1f5f9', borderRadius: '8px', textAlign: 'center', color: '#94a3b8' }}>No Food Image</div>
+              )}
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Spot Image</div>
+              {selectedProof.deliverySpotImages && selectedProof.deliverySpotImages.length > 0 && selectedProof.deliverySpotImages[0].url ? (
+                <img src={selectedProof.deliverySpotImages[0].url} alt="Spot Proof" style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+              ) : (
+                <div style={{ padding: '20px', background: '#f1f5f9', borderRadius: '8px', textAlign: 'center', color: '#94a3b8' }}>No Spot Image</div>
+              )}
+            </div>
+
+            <button onClick={() => setSelectedProof(null)} style={{ width: '100%', background: '#4f46e5', color: 'white', padding: '12px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

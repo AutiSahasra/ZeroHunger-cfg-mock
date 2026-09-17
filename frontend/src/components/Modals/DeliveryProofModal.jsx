@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, Camera, MapPin, CheckCircle2, ShieldCheck, Heart } from 'lucide-react';
+import { X, Camera, MapPin, CheckCircle2, ShieldCheck, Heart, Upload, Loader2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useRequests } from '../../context/RequestContext';
+import { uploadImage } from '../../services/apiService';
 
 export const DeliveryProofModal = ({ request, isOpen, onClose }) => {
   const { submitDeliveryProof } = useRequests();
@@ -15,14 +16,28 @@ export const DeliveryProofModal = ({ request, isOpen, onClose }) => {
   const [volunteerNotes, setVolunteerNotes] = useState(
     'Food inspected for temperature and freshness. Handed over to shelter coordinator.'
   );
-  const [foodPhotoUrl, setFoodPhotoUrl] = useState(
-    'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=500&auto=format&fit=crop&q=60'
-  );
-  const [spotPhotoUrl, setSpotPhotoUrl] = useState(
-    'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=500&auto=format&fit=crop&q=60'
-  );
+  const [foodPhotoUrl, setFoodPhotoUrl] = useState('');
+  const [spotPhotoUrl, setSpotPhotoUrl] = useState('');
+  const [isUploadingFood, setIsUploadingFood] = useState(false);
+  const [isUploadingSpot, setIsUploadingSpot] = useState(false);
 
   if (!isOpen || !request) return null;
+
+  const handleFileUpload = async (e, setUrl, setLoading) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    setLoading(true);
+    try {
+      const url = await uploadImage(file);
+      setUrl(url);
+    } catch (error) {
+      console.error('Failed to upload image:', error);
+      alert('Failed to upload image. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -152,23 +167,45 @@ export const DeliveryProofModal = ({ request, isOpen, onClose }) => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
                   <div style={{ fontSize: '0.72rem', color: 'var(--slate-500)', marginBottom: '4px', fontWeight: 600 }}>
-                    1. Food Freshness Verification
+                    1. Food Freshness Verification *
                   </div>
-                  <img
-                    src={foodPhotoUrl}
-                    alt="Food Freshness"
-                    style={{ width: '100%', height: '110px', objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}
-                  />
+                  {foodPhotoUrl ? (
+                    <div style={{ position: 'relative' }}>
+                      <img
+                        src={foodPhotoUrl}
+                        alt="Food Freshness"
+                        style={{ width: '100%', height: '110px', objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}
+                      />
+                      <button type="button" onClick={() => setFoodPhotoUrl('')} style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: '50%', cursor: 'pointer', padding: '4px' }}><X size={12} /></button>
+                    </div>
+                  ) : (
+                    <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '110px', background: 'var(--slate-50)', border: '1px dashed var(--slate-300)', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}>
+                      {isUploadingFood ? <Loader2 className="spinner" size={24} style={{ color: 'var(--primary-600)' }} /> : <Upload size={24} style={{ color: 'var(--slate-400)', marginBottom: '4px' }} />}
+                      <span style={{ fontSize: '0.75rem', color: 'var(--slate-500)' }}>{isUploadingFood ? 'Uploading...' : 'Upload Photo'}</span>
+                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleFileUpload(e, setFoodPhotoUrl, setIsUploadingFood)} required />
+                    </label>
+                  )}
                 </div>
                 <div>
                   <div style={{ fontSize: '0.72rem', color: 'var(--slate-500)', marginBottom: '4px', fontWeight: 600 }}>
-                    2. Beneficiary Handover Spot
+                    2. Beneficiary Handover Spot *
                   </div>
-                  <img
-                    src={spotPhotoUrl}
-                    alt="Beneficiary Distribution Spot"
-                    style={{ width: '100%', height: '110px', objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}
-                  />
+                  {spotPhotoUrl ? (
+                    <div style={{ position: 'relative' }}>
+                      <img
+                        src={spotPhotoUrl}
+                        alt="Beneficiary Distribution Spot"
+                        style={{ width: '100%', height: '110px', objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}
+                      />
+                      <button type="button" onClick={() => setSpotPhotoUrl('')} style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: '50%', cursor: 'pointer', padding: '4px' }}><X size={12} /></button>
+                    </div>
+                  ) : (
+                    <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '110px', background: 'var(--slate-50)', border: '1px dashed var(--slate-300)', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}>
+                      {isUploadingSpot ? <Loader2 className="spinner" size={24} style={{ color: 'var(--primary-600)' }} /> : <Upload size={24} style={{ color: 'var(--slate-400)', marginBottom: '4px' }} />}
+                      <span style={{ fontSize: '0.75rem', color: 'var(--slate-500)' }}>{isUploadingSpot ? 'Uploading...' : 'Upload Photo'}</span>
+                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleFileUpload(e, setSpotPhotoUrl, setIsUploadingSpot)} required />
+                    </label>
+                  )}
                 </div>
               </div>
             </div>

@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Region = require('../models/Region');
 const FoodRequest = require('../models/FoodRequest');
 const DeliveryProof = require('../models/DeliveryProof');
+const mongoose = require('mongoose');
 
 // @desc    Get all volunteers
 // @route   GET /api/admin/volunteers
@@ -40,9 +41,8 @@ const deactivateVolunteer = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (user && user.role === 'VOLUNTEER') {
-      user.isActive = false; // Soft delete
-      await user.save();
-      res.json({ message: 'Volunteer deactivated' });
+      await User.findByIdAndDelete(req.params.id);
+      res.json({ message: 'Volunteer removed/rejected successfully' });
     } else {
       res.status(404).json({ message: 'Volunteer not found' });
     }
@@ -70,10 +70,14 @@ const createRegion = async (req, res) => {
   try {
     const { city, name, longitude, latitude } = req.body;
     
+    if (isNaN(longitude) || isNaN(latitude)) {
+      return res.status(400).json({ message: 'Valid longitude and latitude are required' });
+    }
+
     // Create point using provided long/lat, defaults to 0,0 if not provided for now
     const center = {
       type: 'Point',
-      coordinates: [longitude || 0, latitude || 0]
+      coordinates: [parseFloat(longitude), parseFloat(latitude)]
     };
 
     const region = new Region({
@@ -166,7 +170,12 @@ const getRequestHistory = async (req, res) => {
 // @access  Private/Admin
 const getDeliveryProof = async (req, res) => {
   try {
-    const proof = await DeliveryProof.findOne({ request: req.params.id })
+    const requestId = req.params.id;
+    const requestFilter = mongoose.Types.ObjectId.isValid(requestId)
+      ? { $in: [requestId, new mongoose.Types.ObjectId(requestId)] }
+      : requestId;
+
+    const proof = await DeliveryProof.findOne({ request: requestFilter })
       .populate('volunteer', 'name');
     
     if (proof) {

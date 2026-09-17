@@ -256,6 +256,11 @@ exports.acceptRequest = async (req, res) => {
       .populate('donor', 'name phone email')
       .populate('assignedVolunteer', 'name phone email');
 
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('request_status_updated', updated);
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Request claimed successfully',
@@ -322,6 +327,11 @@ exports.rejectRequest = async (req, res) => {
       message: `Volunteer was unable to fulfill pickup (${reason.trim()}). Request reopened to queue.`,
       request: request._id
     });
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('request_status_updated', request);
+    }
 
     return res.status(200).json({
       success: true,
@@ -411,6 +421,11 @@ exports.submitDeliveryProof = async (req, res) => {
       request: request._id
     });
 
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('request_status_updated', request);
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Delivery proof submitted and request marked DELIVERED',
@@ -457,6 +472,11 @@ exports.updateRequestStatus = async (req, res) => {
       message: `Food rescue mission status is now: ${status}`,
       request: request._id
     });
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('request_status_updated', request);
+    }
 
     return res.status(200).json({
       success: true,

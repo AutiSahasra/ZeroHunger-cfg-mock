@@ -25,7 +25,7 @@ export const GoogleMapsTracker = ({
 
     try {
       setIsRefreshing(true);
-      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+      const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       const token = localStorage.getItem('nfw_auth_token');
 
       const headers = token ? { Authorization: `Bearer ${token}` } : {};

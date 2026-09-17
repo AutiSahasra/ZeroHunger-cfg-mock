@@ -23,7 +23,7 @@ export async function getGoogleMapsApiKey() {
 
   if (!apiKey || !isRealGoogleKey(apiKey)) {
     try {
-      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+      const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       const res = await fetch(`${apiBase}/maps/config`);
       const data = await res.json();
       if (data?.data?.apiKey && isRealGoogleKey(data.data.apiKey)) {

@@ -8,10 +8,12 @@ import {
   MessageSquare,
   Flame,
   Award,
-  AlertTriangle,
   ArrowRight,
   PackageCheck,
-  Navigation
+  Navigation,
+  List,
+  History,
+  AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useRequests } from '../context/RequestContext';
@@ -36,14 +38,15 @@ export const VolunteerPortal = () => {
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('AVAILABLE'); // 'AVAILABLE' or 'HISTORY'
 
   // Check if volunteer is pending approval (PRD Section 5 & TRD Section 3)
-  const isPendingApproval = currentUser?.status === 'PENDING_APPROVAL';
+  const isPendingApproval = currentUser?.isActive === false;
 
   // Find any active mission assigned to this volunteer
   const activeMission = requests.find(
     (r) =>
-      r.assignedVolunteerId === currentUser?.id &&
+      (r.assignedVolunteerId === currentUser?.id || r.assignedVolunteerId === currentUser?._id) &&
       ['ACCEPTED', 'IN_PROGRESS'].includes(r.status)
   );
 
@@ -51,6 +54,11 @@ export const VolunteerPortal = () => {
   const availableRequests = getPrioritizedAvailableRequests(
     currentUser?.currentLat,
     currentUser?.currentLng
+  );
+
+  // My History (assigned to this volunteer)
+  const myHistory = requests.filter(
+    (r) => r.assignedVolunteerId === currentUser?.id || r.assignedVolunteerId === currentUser?._id
   );
 
   const handleClaim = (req) => {
@@ -263,22 +271,58 @@ export const VolunteerPortal = () => {
 
       {/* Main Content: Available Requests Radar (Left) + Interactive Map (Right) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)', gap: '24px' }}>
-        {/* Left Column: Prioritized Requests Feed */}
+        {/* Left Column: Feed / History */}
         <div>
           <div className="card">
-            <div className="card-header">
-              <div>
-                <div className="card-title">
-                  <Flame size={20} style={{ color: 'var(--rose-500)' }} />
-                  <span>Available Food Rescue Feed</span>
-                </div>
-                <div style={{ fontSize: '0.74rem', color: 'var(--slate-500)', marginTop: '2px' }}>
-                  Ranked by <b>Distance &amp; Quantity Priority Engine</b> (TRD Section 12)
+            <div className="card-header" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div className="card-title">
+                    <Flame size={20} style={{ color: 'var(--rose-500)' }} />
+                    <span>Food Rescue Operations</span>
+                  </div>
                 </div>
               </div>
-              <span className="badge badge-pending">
-                {availableRequests.length} Pending
-              </span>
+              
+              {/* Tabs */}
+              <div style={{ display: 'flex', gap: '10px', borderBottom: '1px solid var(--slate-200)', paddingBottom: '8px' }}>
+                <button
+                  onClick={() => setActiveTab('AVAILABLE')}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    borderBottom: activeTab === 'AVAILABLE' ? '2px solid var(--primary-600)' : '2px solid transparent',
+                    color: activeTab === 'AVAILABLE' ? 'var(--primary-700)' : 'var(--slate-500)',
+                    fontWeight: 700,
+                    padding: '8px 12px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <List size={16} /> Available Missions
+                  <span className="badge badge-pending" style={{ marginLeft: '4px' }}>{availableRequests.length}</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('HISTORY')}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    borderBottom: activeTab === 'HISTORY' ? '2px solid var(--primary-600)' : '2px solid transparent',
+                    color: activeTab === 'HISTORY' ? 'var(--primary-700)' : 'var(--slate-500)',
+                    fontWeight: 700,
+                    padding: '8px 12px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <History size={16} /> My History
+                  <span className="badge badge-delivered" style={{ marginLeft: '4px', background: 'var(--slate-200)', color: 'var(--slate-700)' }}>{myHistory.length}</span>
+                </button>
+              </div>
             </div>
 
             {/* Single Order Concurrency Alert Banner */}
@@ -302,19 +346,21 @@ export const VolunteerPortal = () => {
               </div>
             )}
 
-            {availableRequests.length === 0 ? (
-              <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--slate-400)' }}>
-                <CheckCircle2 size={36} style={{ margin: '0 auto 10px', color: 'var(--primary-600)' }} />
-                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--slate-800)' }}>
-                  All local surplus food rescued!
-                </div>
-                <p style={{ fontSize: '0.82rem', marginTop: '4px' }}>
-                  No pending food rescue calls in this zone right now. Great job!
-                </p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {availableRequests.map((req) => (
+            {activeTab === 'AVAILABLE' && (
+              <>
+                {availableRequests.length === 0 ? (
+                  <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--slate-400)' }}>
+                    <CheckCircle2 size={36} style={{ margin: '0 auto 10px', color: 'var(--primary-600)' }} />
+                    <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--slate-800)' }}>
+                      All local surplus food rescued!
+                    </div>
+                    <p style={{ fontSize: '0.82rem', marginTop: '4px' }}>
+                      No pending food rescue calls in this zone right now. Great job!
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {availableRequests.map((req) => (
                   <div
                     key={req.id}
                     style={{
@@ -392,6 +438,81 @@ export const VolunteerPortal = () => {
                   </div>
                 ))}
               </div>
+            )}
+            </>
+            )}
+
+            {activeTab === 'HISTORY' && (
+              <>
+                {myHistory.length === 0 ? (
+                  <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--slate-400)' }}>
+                    <History size={36} style={{ margin: '0 auto 10px', color: 'var(--slate-300)' }} />
+                    <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--slate-800)' }}>
+                      No History Yet
+                    </div>
+                    <p style={{ fontSize: '0.82rem', marginTop: '4px' }}>
+                      Missions you accept and complete will appear here.
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {myHistory.map((req) => (
+                      <div
+                        key={req.id}
+                        style={{
+                          border: '1px solid var(--border-subtle)',
+                          borderRadius: 'var(--radius-lg)',
+                          padding: '16px',
+                          background: 'white',
+                          boxShadow: 'var(--shadow-sm)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '10px'
+                        }}
+                      >
+                        {/* Priority Header Strip */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span className={`badge badge-${req.status.toLowerCase()}`}>
+                            {req.status}
+                          </span>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--slate-500)' }}>
+                            ID: {req.id}
+                          </span>
+                        </div>
+
+                        {/* Food Info */}
+                        <div>
+                          <h4 style={{ fontSize: '1.02rem', fontWeight: 700, color: 'var(--slate-900)' }}>
+                            {req.title}
+                          </h4>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--slate-600)', marginTop: '2px' }}>
+                            {req.servings} Servings ({req.quantityKg} kg) • {req.foodType}
+                          </div>
+                        </div>
+
+                        {/* Pickup Address */}
+                        <div style={{ fontSize: '0.82rem', color: 'var(--slate-700)', display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+                          <MapPin size={15} style={{ color: 'var(--primary-600)', marginTop: '2px', flexShrink: 0 }} />
+                          <span>{req.pickupAddress}</span>
+                        </div>
+
+                        {/* Footer Actions */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--slate-100)', paddingTop: '10px', marginTop: '4px' }}>
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => {
+                              setSelectedRequest(req);
+                              setIsDetailModalOpen(true);
+                            }}
+                          >
+                            Audit Details
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

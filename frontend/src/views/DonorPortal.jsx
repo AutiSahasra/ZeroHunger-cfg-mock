@@ -22,7 +22,7 @@ import { RejectModal } from '../components/Modals/RejectModal';
 
 export const DonorPortal = () => {
   const { currentUser } = useAuth();
-  const { requests, setActiveChatRequestId } = useRequests();
+  const { requests, setActiveChatRequestId, getRequestDetails } = useRequests();
 
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -35,7 +35,7 @@ export const DonorPortal = () => {
 
   // Filter requests for current donor
   const myRequests = requests.filter(
-    (r) => r.donorId === currentUser?.id || r.donorName === currentUser?.name
+    (r) => r.donorId === (currentUser?.id || currentUser?._id) || r.donorName === currentUser?.name
   );
 
   const assignedRequest = myRequests.find((r) =>
@@ -372,8 +372,13 @@ export const DonorPortal = () => {
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', borderTop: '1px solid var(--slate-100)', paddingTop: '10px' }}>
                       <button
                         className="btn btn-secondary btn-sm"
-                        onClick={() => {
-                          setSelectedRequest(req);
+                        onClick={async () => {
+                          try {
+                            const fullDetails = await getRequestDetails(req.id || req._id);
+                            setSelectedRequest(fullDetails || req);
+                          } catch (err) {
+                            setSelectedRequest(req);
+                          }
                           setIsDetailOpen(true);
                         }}
                       >
@@ -488,8 +493,13 @@ export const DonorPortal = () => {
                 </button>
                 <button
                   className="btn btn-secondary btn-sm"
-                  onClick={() => {
-                    setSelectedRequest(currentTracked);
+                  onClick={async () => {
+                    try {
+                      const fullDetails = await getRequestDetails(currentTracked.id || currentTracked._id);
+                      setSelectedRequest(fullDetails || currentTracked);
+                    } catch (err) {
+                      setSelectedRequest(currentTracked);
+                    }
                     setIsDetailOpen(true);
                   }}
                 >

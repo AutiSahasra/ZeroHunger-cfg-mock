@@ -83,10 +83,11 @@ export const ChatModal = ({ isOpen, onClose, request }) => {
             </div>
           ) : (
             currentChatMessages.map((msg) => {
-              const isMine = msg.senderId === currentUser?.id || msg.senderRole === currentUser?.role;
+              const msgSenderId = msg.sender?._id || msg.sender || msg.senderId;
+              const isMine = msgSenderId === (currentUser?.id || currentUser?._id) || msg.senderRole === currentUser?.role;
               return (
                 <div
-                  key={msg.id}
+                  key={msg._id || msg.id || Math.random().toString()}
                   style={{
                     alignSelf: isMine ? 'flex-end' : 'flex-start',
                     maxWidth: '80%',
@@ -112,7 +113,7 @@ export const ChatModal = ({ isOpen, onClose, request }) => {
                       border: isMine ? 'none' : '1px solid var(--border-subtle)'
                     }}
                   >
-                    {msg.text}
+                    {msg.content || msg.text}
                   </div>
                 </div>
               );

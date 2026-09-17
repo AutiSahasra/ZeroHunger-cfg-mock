@@ -1,4 +1,5 @@
 const googleMapsService = require('../services/googleMapsService');
+const DeliveryProof = require('../models/DeliveryProof');
 
 // @desc    Get Google Maps JavaScript API Configuration for frontend
 // @route   GET /api/maps/config
@@ -173,3 +174,45 @@ exports.getStaticMapPreview = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Get Hunger Hotspots based on delivery proofs
+// @route   GET /api/maps/hotspots
+// @access  Public
+exports.getHotspots = async (req, res, next) => {
+  try {
+    const proofs = await DeliveryProof.find().populate('request');
+    const hotspotsMap = {};
+    
+    proofs.forEach(proof => {
+      let lat = 13.0450;
+      let lng = 80.2400;
+      
+      if (proof.deliveryLocation?.coordinates?.coordinates?.length >= 2) {
+        lng = proof.deliveryLocation.coordinates.coordinates[0];
+        lat = proof.deliveryLocation.coordinates.coordinates[1];
+      }
+      
+      const key = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+      
+      if (!hotspotsMap[key]) {
+        hotspotsMap[key] = {
+          name: proof.deliveryLocation?.address || 'Community Relief Center',
+          lat,
+          lng,
+          deliveriesCount: 0,
+          totalMealsReceived: 0
+        };
+      }
+      hotspotsMap[key].deliveriesCount += 1;
+      hotspotsMap[key].totalMealsReceived += (proof.request?.quantity || 40);
+    });
+    
+    res.status(200).json({
+      success: true,
+      data: Object.values(hotspotsMap)
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

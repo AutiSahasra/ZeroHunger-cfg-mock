@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const FoodRequest = require('../models/FoodRequest');
 const jwt = require('jsonwebtoken');
 
 // Generate JWT Helper
@@ -45,11 +46,23 @@ const registerUser = async (req, res) => {
     });
 
     if (user) {
-      let token = null;
-      if (user.isActive) {
-        token = generateToken(res, user._id);
-      }
+      // Generate token immediately so the user stays logged in (session persists)
+      // They might still have isActive: false which can be checked by the UI or middlewares
+      const token = generateToken(res, user._id);
       
+      let stats = {};
+      if (user.role === 'DONOR') {
+        const requests = await FoodRequest.find({ donor: user._id });
+        const donationsCount = requests.length;
+        const foodDonatedKg = requests.reduce((acc, curr) => acc + (curr.quantity ? Math.round(curr.quantity * 0.4) : 0), 0);
+        stats = { donationsCount, foodDonatedKg };
+      } else if (user.role === 'VOLUNTEER') {
+        const requests = await FoodRequest.find({ assignedVolunteer: user._id, status: 'DELIVERED' });
+        const deliveriesCompleted = requests.length;
+        const foodDeliveredKg = requests.reduce((acc, curr) => acc + (curr.quantity ? Math.round(curr.quantity * 0.4) : 0), 0);
+        stats = { deliveriesCompleted, foodDeliveredKg };
+      }
+
       res.status(201).json({
         success: true,
         token,
@@ -58,11 +71,14 @@ const registerUser = async (req, res) => {
         email: user.email,
         role: user.role,
         isActive: user.isActive,
+        ...stats,
         user: {
           id: user._id,
           name: user.name,
           email: user.email,
-          role: user.role
+          role: user.role,
+          isActive: user.isActive,
+          ...stats
         }
       });
     } else {
@@ -85,6 +101,19 @@ const loginUser = async (req, res) => {
     if (user && (await user.matchPassword(password))) {
       const token = generateToken(res, user._id);
 
+      let stats = {};
+      if (user.role === 'DONOR') {
+        const requests = await FoodRequest.find({ donor: user._id });
+        const donationsCount = requests.length;
+        const foodDonatedKg = requests.reduce((acc, curr) => acc + (curr.quantity ? Math.round(curr.quantity * 0.4) : 0), 0);
+        stats = { donationsCount, foodDonatedKg };
+      } else if (user.role === 'VOLUNTEER') {
+        const requests = await FoodRequest.find({ assignedVolunteer: user._id, status: 'DELIVERED' });
+        const deliveriesCompleted = requests.length;
+        const foodDeliveredKg = requests.reduce((acc, curr) => acc + (curr.quantity ? Math.round(curr.quantity * 0.4) : 0), 0);
+        stats = { deliveriesCompleted, foodDeliveredKg };
+      }
+
       res.status(200).json({
         success: true,
         token,
@@ -93,11 +122,14 @@ const loginUser = async (req, res) => {
         email: user.email,
         role: user.role,
         isActive: user.isActive,
+        ...stats,
         user: {
           id: user._id,
           name: user.name,
           email: user.email,
-          role: user.role
+          role: user.role,
+          isActive: user.isActive,
+          ...stats
         }
       });
     } else {
@@ -126,12 +158,27 @@ const getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
     if (user) {
+      let stats = {};
+      
+      if (user.role === 'DONOR') {
+        const requests = await FoodRequest.find({ donor: user._id });
+        const donationsCount = requests.length;
+        const foodDonatedKg = requests.reduce((acc, curr) => acc + (curr.quantity ? Math.round(curr.quantity * 0.4) : 0), 0);
+        stats = { donationsCount, foodDonatedKg };
+      } else if (user.role === 'VOLUNTEER') {
+        const requests = await FoodRequest.find({ assignedVolunteer: user._id, status: 'DELIVERED' });
+        const deliveriesCompleted = requests.length;
+        const foodDeliveredKg = requests.reduce((acc, curr) => acc + (curr.quantity ? Math.round(curr.quantity * 0.4) : 0), 0);
+        stats = { deliveriesCompleted, foodDeliveredKg };
+      }
+
       res.status(200).json({
         _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
         isActive: user.isActive,
+        ...stats,
         user: {
           id: user._id,
           _id: user._id,
@@ -139,6 +186,7 @@ const getMe = async (req, res) => {
           email: user.email,
           role: user.role,
           isActive: user.isActive,
+          ...stats
         },
       });
     } else {

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import io from 'socket.io-client';
 import {
   getRequests,
   createRequest as apiCreateRequest,
@@ -13,8 +14,10 @@ import {
   getPriorityWeights,
   savePriorityWeights,
   getMessages,
-  sendChatMessage as apiSendMessage
-} from '../services/storageService';
+  sendChatMessage as apiSendMessage,
+  formatRequest,
+  getRequestDetails as apiGetRequestDetails
+} from '../services/apiService';
 import { calculateDistanceKm, calculatePriorityScore } from '../services/priorityEngine';
 import { useAuth } from './AuthContext';
 
@@ -28,40 +31,97 @@ export const RequestProvider = ({ children }) => {
   const [priorityWeights, setWeightsState] = useState({ distanceWeight: 0.5, quantityWeight: 0.5 });
   const [activeChatRequestId, setActiveChatRequestId] = useState(null);
   const [currentChatMessages, setCurrentChatMessages] = useState([]);
+  const [socket, setSocket] = useState(null);
 
-  const refreshData = () => {
-    const reqs = getRequests();
-    setRequests(reqs);
-    setNotifications(getNotifications(currentUser?.id));
-    setHotspots(getHotspots());
-    setWeightsState(getPriorityWeights());
+  const refreshData = async () => {
+    try {
+      const reqs = await getRequests();
+      setRequests(reqs || []);
+      const notifs = await getNotifications(currentUser?.id || currentUser?._id);
+      setNotifications(notifs || []);
+      const hots = await getHotspots();
+      setHotspots(hots || []);
+      const weights = await getPriorityWeights();
+      setWeightsState(weights);
+    } catch(err) {
+      console.error("Failed to refresh data", err);
+    }
   };
 
   useEffect(() => {
+    if (!currentUser) return;
     refreshData();
-    // Simulate real-time polling / socket listeners
-    const interval = setInterval(refreshData, 4000);
-    return () => clearInterval(interval);
+    
+    // WebSocket Integration
+    const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000', {
+      withCredentials: true
+    });
+    setSocket(newSocket);
+    
+    newSocket.on('connect', () => {
+      console.log('Connected to WebSocket server');
+    });
+
+    newSocket.on('new_food_request', (newReq) => {
+      const formattedReq = formatRequest(newReq);
+      setRequests(prev => [formattedReq, ...prev]);
+    });
+
+    newSocket.on('request_status_updated', (updatedReq) => {
+      const formattedReq = formatRequest(updatedReq);
+      setRequests(prev => prev.map(r => (r._id === formattedReq._id || r.id === formattedReq.id) ? formattedReq : r));
+    });
+    
+
+
+    return () => {
+      newSocket.disconnect();
+    };
   }, [currentUser, selectedCity]);
 
   // Load chat messages when activeChatRequestId changes
   useEffect(() => {
     if (activeChatRequestId) {
-      setCurrentChatMessages(getMessages(activeChatRequestId));
+      const fetchMsgs = async () => {
+        const msgs = await getMessages(activeChatRequestId);
+        setCurrentChatMessages(msgs || []);
+      };
+      fetchMsgs();
+      
+      // Join room for this specific request if socket exists
+      let messageHandler = null;
+      if (socket) {
+         socket.emit('join_room', activeChatRequestId);
+         
+         messageHandler = (msg) => {
+           if (msg.request === activeChatRequestId || String(msg.request) === String(activeChatRequestId)) {
+             setCurrentChatMessages(prev => [...prev, msg]);
+           }
+         };
+         socket.on('receive_message', messageHandler);
+      }
+      
+      return () => {
+        if (socket && activeChatRequestId) {
+          socket.emit('leave_room', activeChatRequestId);
+          if (messageHandler) {
+            socket.off('receive_message', messageHandler);
+          }
+        }
+      }
     } else {
       setCurrentChatMessages([]);
     }
-  }, [activeChatRequestId]);
+  }, [activeChatRequestId, socket]);
 
-  const updateWeights = (newWeights) => {
+  const updateWeights = async (newWeights) => {
     setWeightsState(newWeights);
-    savePriorityWeights(newWeights);
+    await savePriorityWeights(newWeights);
   };
 
-  // Get prioritized available requests for a volunteer
   const getPrioritizedAvailableRequests = (volunteerLat, volunteerLng) => {
     const pendingReqs = requests.filter(
-      r => r.status === 'PENDING' && (!selectedCity || r.cityId === selectedCity)
+      r => r.status === 'PENDING'
     );
 
     return pendingReqs
@@ -69,12 +129,12 @@ export const RequestProvider = ({ children }) => {
         const distKm = calculateDistanceKm(
           volunteerLat || 13.0200,
           volunteerLng || 80.2250,
-          req.pickupLat,
-          req.pickupLng
+          req.pickupLocation?.coordinates?.coordinates?.[1] || req.pickupLat,
+          req.pickupLocation?.coordinates?.coordinates?.[0] || req.pickupLng
         );
         const priorityData = calculatePriorityScore(
           distKm,
-          req.servings,
+          req.quantity,
           priorityWeights.distanceWeight,
           priorityWeights.quantityWeight
         );
@@ -90,52 +150,66 @@ export const RequestProvider = ({ children }) => {
       .sort((a, b) => b.priorityScore - a.priorityScore);
   };
 
-  // Actions
-  const handleCreateRequest = (formData) => {
-    const newReq = apiCreateRequest(formData, currentUser);
-    refreshData();
+  const handleCreateRequest = async (formData) => {
+    const newReq = await apiCreateRequest(formData);
+    // Real-time backend will broadcast, but we can optimistically update
+    setRequests(prev => [newReq, ...prev]);
     return newReq;
   };
 
-  const handleAcceptRequest = (requestId) => {
-    const updated = apiAcceptRequest(requestId, currentUser);
-    refreshData();
+  const handleGetRequestDetails = async (requestId) => {
+    return await apiGetRequestDetails(requestId);
+  };
+
+  const handleAcceptRequest = async (requestId) => {
+    const updated = await apiAcceptRequest(requestId);
+    setRequests(prev => prev.map(r => (r._id === requestId || r.id === requestId) ? updated : r));
     return updated;
   };
 
-  const handleUpdateStatus = (requestId, newStatus, notes) => {
-    const updated = apiUpdateStatus(requestId, newStatus, currentUser, notes);
-    refreshData();
+  const handleUpdateStatus = async (requestId, newStatus, notes) => {
+    const updated = await apiUpdateStatus(requestId, newStatus, notes);
+    setRequests(prev => prev.map(r => (r._id === requestId || r.id === requestId) ? updated : r));
     return updated;
   };
 
-  const handleRejectRequest = (requestId, reason) => {
-    const updated = apiRejectRequest(requestId, currentUser, reason);
-    refreshData();
+  const handleRejectRequest = async (requestId, reason) => {
+    const updated = await apiRejectRequest(requestId, reason);
+    setRequests(prev => prev.map(r => (r._id === requestId || r.id === requestId) ? updated : r));
     return updated;
   };
 
-  const handleSubmitProof = (requestId, proofData) => {
-    const updated = apiSubmitProof(requestId, currentUser, proofData);
-    refreshData();
+  const handleSubmitProof = async (requestId, proofData) => {
+    const updated = await apiSubmitProof(requestId, proofData);
+    setRequests(prev => prev.map(r => (r._id === requestId || r.id === requestId) ? updated : r));
     return updated;
   };
 
-  const handleCancelRequest = (requestId, reason) => {
-    const updated = apiCancelRequest(requestId, currentUser, reason);
-    refreshData();
+  const handleCancelRequest = async (requestId, reason) => {
+    const updated = await apiCancelRequest(requestId, reason);
+    setRequests(prev => prev.map(r => (r._id === requestId || r.id === requestId) ? updated : r));
     return updated;
   };
 
-  const handleSendMessage = (text) => {
+  const handleSendMessage = async (text) => {
     if (!activeChatRequestId || !currentUser) return;
-    const msg = apiSendMessage(activeChatRequestId, currentUser, text);
-    setCurrentChatMessages(prev => [...prev, msg]);
-    return msg;
+    
+    // Using WebSocket to send message directly for faster response
+    if (socket) {
+       socket.emit('send_message', {
+         requestId: activeChatRequestId,
+         senderId: currentUser.id || currentUser._id,
+         senderName: currentUser.name,
+         senderRole: currentUser.role,
+         content: text
+       });
+    } else {
+       await apiSendMessage(activeChatRequestId, text);
+    }
   };
 
-  const handleMarkNotifRead = (id) => {
-    markNotificationRead(id);
+  const handleMarkNotifRead = async (id) => {
+    await markNotificationRead(id);
     refreshData();
   };
 
@@ -154,6 +228,7 @@ export const RequestProvider = ({ children }) => {
         setActiveChatRequestId,
         currentChatMessages,
         getPrioritizedAvailableRequests,
+        getRequestDetails: handleGetRequestDetails,
         createRequest: handleCreateRequest,
         acceptRequest: handleAcceptRequest,
         updateStatus: handleUpdateStatus,

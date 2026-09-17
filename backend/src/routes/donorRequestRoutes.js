@@ -20,26 +20,23 @@ router.use(protect);
 router.post('/:id/accept', acceptRequest);
 router.post('/:id/complete', completeDelivery);
 
-// All subsequent donor management operations require DONOR role
-router.use(requireDonor);
-
 router.route('/')
-  .post(createRequest);
+  .post(requireDonor, createRequest);
 
 router.route('/mine')
-  .get(getMyRequests);
+  .get(requireDonor, getMyRequests);
 
 router.route('/active-tracking')
-  .get(getActiveMissionsTracking);
+  .get(requireDonor, getActiveMissionsTracking);
 
 router.route('/:id/tracking')
-  .get(getVolunteerTracking);
+  .get(requireDonor, getVolunteerTracking);
 
 router.route('/:id')
-  .get(getRequestById)
-  .patch(updateRequest)
-  .delete(cancelRequest);
+  .get(requireDonor, getRequestById)
+  .patch(requireDonor, updateRequest)
+  .delete(requireDonor, cancelRequest);
 
-router.post('/:id/cancel', cancelRequest);
+router.post('/:id/cancel', requireDonor, cancelRequest);
 
 module.exports = router;

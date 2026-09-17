@@ -14,7 +14,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkLoggedIn = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/auth/me', {
+        const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/me`, {
           withCredentials: true,
         });
         setCurrentUser(res.data);
@@ -32,7 +32,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     const res = await axios.post(
-      'http://localhost:5000/api/auth/login',
+      `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/login`,
       { email, password },
       { withCredentials: true }
     );
@@ -43,7 +43,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     const res = await axios.post(
-      'http://localhost:5000/api/auth/register',
+      `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/register`,
       userData,
       { withCredentials: true }
     );
@@ -53,7 +53,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    await axios.post('http://localhost:5000/api/auth/logout', {}, { withCredentials: true });
+    await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/logout`, {}, { withCredentials: true });
     setCurrentUser(null);
     setCurrentPersona(null);
   };

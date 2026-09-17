@@ -10,9 +10,10 @@ const {
 } = require('../controllers/mapController');
 const { protect } = require('../middlewares/auth');
 
-// Public config and static preview endpoints
+// Public config, static preview, and hotspot endpoints
 router.get('/config', getMapConfig);
 router.get('/static-preview', getStaticMapPreview);
+router.get('/hotspots', require('../controllers/mapController').getHotspots);
 
 // Geocoding, Places search and Distance calculations
 router.get('/geocode', protect, geocode);
